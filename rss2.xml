@@ -1,0 +1,514 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0"
+  xmlns:atom="http://www.w3.org/2005/Atom"
+  xmlns:content="http://purl.org/rss/1.0/modules/content/">
+  <channel>
+    <title>Foxhole</title>
+    <link>https://blog.southfox.tk/</link>
+    
+    <atom:link href="https://blog.southfox.tk/rss2.xml" rel="self" type="application/rss+xml"/>
+    
+    <description></description>
+    <pubDate>Fri, 12 Mar 2021 21:28:56 GMT</pubDate>
+    <generator>http://hexo.io/</generator>
+    
+    <item>
+      <title>中文网页字体动态裁剪</title>
+      <link>https://blog.southfox.tk/2021/03/%E4%B8%AD%E6%96%87%E7%BD%91%E9%A1%B5%E5%AD%97%E4%BD%93%E5%8A%A8%E6%80%81%E8%A3%81%E5%89%AA/</link>
+      <guid>https://blog.southfox.tk/2021/03/%E4%B8%AD%E6%96%87%E7%BD%91%E9%A1%B5%E5%AD%97%E4%BD%93%E5%8A%A8%E6%80%81%E8%A3%81%E5%89%AA/</guid>
+      <pubDate>Fri, 12 Mar 2021 21:28:56 GMT</pubDate>
+      
+      <description>&lt;p&gt;首先，我先在放个【矣】在这里。&lt;/p&gt;</description>
+      
+      
+      
+      <content:encoded><![CDATA[<p>首先，我先在放个【矣】在这里。</p><a id="more"></a><p>比起字母系统语言，汉语在计算机世界上有着天然的弱势，<strong>锟斤拷</strong>和<strong>锘锘锘</strong>这些编码问题本身就令人头大了，尤其对于互联网这个寸土寸金之地，想要在网页内展现自定义字体，首先就要先加载个几兆大小的字体文件，要这么做那就是极度的浪费和折磨了。</p><p>所以字体裁剪是必要的，有两种方向：</p><ul><li><p>提前准备常用字集进行裁剪</p></li><li><p>提前计算出需要展示的字集再进行裁剪</p></li></ul><p>第一种方式就是突出一个极致的懒，只需要做一次，就能不用再管了。缺点就是总会有不在常用字体里的“常用字”，这样网页加载出来的效果就会形成“犬牙交错”之感，看起来非常辣眼（要是选用的字体和默认字体差别非常大的话）。而且常用字内其实也不是每个字都用上了，所以还是会有浪费。</p><p>第二种方式就更优雅一点了，能保证字体里的每个字都是用上的。缺点就是麻烦了点儿，不过只要写个自动化脚本，这点麻烦也不算麻烦了。</p><h2 id="压缩方案"><a href="#压缩方案" class="headerlink" title="压缩方案"></a>压缩方案</h2><p>当选 <a href="https://github.com/fonttools/fonttools">fonttools</a> ，至少这项目现在还活跃着，其他类似的字体项目都停滞了蛮久时间的了……好像。</p><p>要使用直接通过 <code>pip install</code> 安装 <code>fonttools</code>就行了，要是还想压成 <code>woff2</code> 这种压缩率更高的格式还得再安装个 <code>brotli</code> 。</p><p>使用命令：</p><p><code>pyftsubset &lt;字体&gt;.ttf --text-file=&lt;字符集文件&gt;</code></p><p>当然，也可用 <code>--text=</code> 的选项来直接后面跟所需字符。</p><p>要压成 <code>woff2</code> 格式可以用 <code>fonttools ttLib.woff2 compress &lt;压缩后字体&gt;.woff2 &lt;被压字体&gt;.ttf</code> 的方式。</p><h3 id="脚本代码"><a href="#脚本代码" class="headerlink" title="脚本代码"></a>脚本代码</h3><p>反正一个简单粗暴的循环怼上去就得了，去重可以用集合来去。</p><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> os</span><br><span class="line"></span><br><span class="line">path = os.getcwd()</span><br><span class="line"></span><br><span class="line">filelist = []</span><br><span class="line"><span class="keyword">for</span> root, dirs, files <span class="keyword">in</span> os.walk(path + <span class="string">&#x27;/source&#x27;</span>):</span><br><span class="line">    <span class="keyword">for</span> name <span class="keyword">in</span> files :</span><br><span class="line">        filelist.append(os.path.join(root, name))</span><br><span class="line"></span><br><span class="line">strset = <span class="built_in">set</span>([])</span><br><span class="line"><span class="keyword">for</span> filename <span class="keyword">in</span>  filelist:</span><br><span class="line">    <span class="keyword">if</span> <span class="string">&#x27;.md&#x27;</span> <span class="keyword">not</span> <span class="keyword">in</span> filename:</span><br><span class="line">        <span class="keyword">continue</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">with</span> <span class="built_in">open</span>(filename, <span class="string">&quot;r&quot;</span>,encoding=<span class="string">&#x27;utf-8&#x27;</span>) <span class="keyword">as</span> f:</span><br><span class="line">        <span class="keyword">for</span> subset <span class="keyword">in</span> f.read():</span><br><span class="line">            strset.add(subset)</span><br><span class="line"></span><br><span class="line">str_ = <span class="string">&#x27;&#x27;</span></span><br><span class="line">a = <span class="number">0</span></span><br><span class="line"><span class="keyword">with</span> <span class="built_in">open</span>(<span class="string">&#x27;strdb.txt&#x27;</span>, <span class="string">&quot;w&quot;</span>) <span class="keyword">as</span> f:</span><br><span class="line">    <span class="keyword">for</span> i <span class="keyword">in</span> <span class="built_in">list</span>(strset):</span><br><span class="line">        str_ += i</span><br><span class="line">        a += <span class="number">1</span></span><br><span class="line">    print(<span class="string">&#x27;%d Characters in all files.&#x27;</span>%a)</span><br><span class="line">    print(str_)</span><br><span class="line">    f.write(str_)</span><br></pre></td></tr></table></figure><p>将 <code>source</code> 下的 <code>md</code> 文件的字符提出来，再写入到 <code>strdb.txt</code> 以带后续使用。当然直接用 <code>--text=</code> 选项直接塞进命令里也可以，反正我是喜欢先写进文件的。</p><p>最后生成的字体文件在 80kb 左右，对于网页来说，已经是可以接受的程度了，当然这跟我选择的字体有关，是一款像素字体，不怎么占空间，如果是常规字体的话，大概会在上两三百左右吧。</p><h2 id="坑"><a href="#坑" class="headerlink" title="坑"></a>坑</h2><ol><li>首先是 <code>Travis</code> 部署上得用 <code>python3</code> 环境，要特别声明一下，二环境下会输出个零蛋，应该是版本之间语法的锅？</li><li>代码里没有解析配置文件里的中文语句，所以标语口号这种，可能就会没被解析到，不过我懒地再一个一个引入配置文件，所以还不如……<del>我先在放个【矣】在这里。</del></li><li>确保文本在网页字体加载期间保持可见状态，即设置 <code>font-display: swap</code>  选项 在<code>@font-face</code> 内，要不然的话字体没加载出来文本会消失掉。</li></ol><h2 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h2><ol><li><a href="https://github.com/fonttools/fonttools">Fonttools</a></li><li><a href="https://hsingko.github.io/post/compress_webfont/">中文字体压缩的那些事——涂雨期的博客</a></li><li><a href="https://web.dev/font-display/">Font display</a></li></ol>]]></content:encoded>
+      
+      
+      <category domain="https://blog.southfox.tk/categories/%E6%8A%80%E6%9C%AF/">技术</category>
+      
+      
+      <category domain="https://blog.southfox.tk/tags/%E6%8A%80%E6%9C%AF/">技术</category>
+      
+      <category domain="https://blog.southfox.tk/tags/%E5%AD%97%E4%BD%93/">字体</category>
+      
+      
+      <comments>https://blog.southfox.tk/2021/03/%E4%B8%AD%E6%96%87%E7%BD%91%E9%A1%B5%E5%AD%97%E4%BD%93%E5%8A%A8%E6%80%81%E8%A3%81%E5%89%AA/#disqus_thread</comments>
+      
+    </item>
+    
+    <item>
+      <title>Wrong</title>
+      <link>https://blog.southfox.tk/2021/02/wrong/</link>
+      <guid>https://blog.southfox.tk/2021/02/wrong/</guid>
+      <pubDate>Fri, 19 Feb 2021 22:45:41 GMT</pubDate>
+      
+      <description>&lt;p&gt;只玩耍，不工作，聪明的孩子也变傻。&lt;/p&gt;
+&lt;p&gt;只玩耍，不工作，聪明的孩子也变傻。&lt;/p&gt;
+&lt;p&gt;只玩耍，不工作，聪明的孩子也变傻。&lt;/p&gt;</description>
+      
+      
+      
+      <content:encoded><![CDATA[<p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><a id="more"></a><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p><p>只玩耍，不工作，聪明的孩子也变傻。</p>]]></content:encoded>
+      
+      
+      <category domain="https://blog.southfox.tk/categories/%E6%97%A5%E5%B8%B8/">日常</category>
+      
+      
+      <category domain="https://blog.southfox.tk/tags/%E6%97%A5%E5%B8%B8/">日常</category>
+      
+      
+      <comments>https://blog.southfox.tk/2021/02/wrong/#disqus_thread</comments>
+      
+    </item>
+    
+    <item>
+      <title>交替的三人组</title>
+      <link>https://blog.southfox.tk/2020/11/11-25%E6%A2%A6%E8%AE%B0/</link>
+      <guid>https://blog.southfox.tk/2020/11/11-25%E6%A2%A6%E8%AE%B0/</guid>
+      <pubDate>Wed, 25 Nov 2020 21:46:44 GMT</pubDate>
+      
+      <description>&lt;p&gt;一个又长又玄的梦，不过隔了将近12小时的现在来记，好多地方都模糊了……&lt;/p&gt;
+&lt;h2 id=&quot;还能记得的场景&quot;&gt;&lt;a href=&quot;#还能记得的场景&quot; class=&quot;headerlink&quot; title=&quot;还能记得的场景&quot;&gt;&lt;/a&gt;还能记得的场景&lt;/h2&gt;&lt;p&gt;在地铁（或者火车）上，我和其他另外两个人一起坐着。然后我拿起手机，屏幕上显示【10秒后进入梦境】。&lt;/p&gt;
+&lt;p&gt;期间我和另外两个人组成了三人组，我在里面，但是另一个场景又有一队三人组，但里面又没有我？总之非常混乱，处于薛定谔状态。&lt;/p&gt;</description>
+      
+      
+      
+      <content:encoded><![CDATA[<p>一个又长又玄的梦，不过隔了将近12小时的现在来记，好多地方都模糊了……</p><h2 id="还能记得的场景"><a href="#还能记得的场景" class="headerlink" title="还能记得的场景"></a>还能记得的场景</h2><p>在地铁（或者火车）上，我和其他另外两个人一起坐着。然后我拿起手机，屏幕上显示【10秒后进入梦境】。</p><p>期间我和另外两个人组成了三人组，我在里面，但是另一个场景又有一队三人组，但里面又没有我？总之非常混乱，处于薛定谔状态。</p><a id="more"></a><p>总之大概是去借什么书来着……？然后去图书馆，或者叫书店更准确一点。柜子上摆满了很多“烂书”，大众成功学那种，你的大脑只开发了百分之十之类的，要不就是老旧的书。我没怎么感兴趣，然后去到了其他展台。期间感觉整个图书馆都是淹了水，我在水下游着去找书，非常怪诞。貌似是找书给另外两个人的……</p><p>然后我就做梦了，大抵是把一个人砍掉半个头，然后把他身子下半截拿去火烤，只是想处理掉，但不是出于毁尸灭迹心态吧。然后我就醒了（不是现实中），然后打开门，发现外面就是——那具烧焦的尸体，我顿时吓到冒冷汗。其他两个人中的一个跳出来对我说（或者不是我），是我干的哟……</p><p>之后一个场景是——公司辞职？我没有联想起相关的场景，但是早上出门前匆匆写在草稿纸上的关键词有它……之后的场景是一个狙击手驾着狙，嘭的一声开枪击中了我对面的一个人，他的胸口上绽出一团红色……联想上个关键词，难道是最近打工人的梗吗？这也太怪诞了……</p><p>之后闹钟就……在响之前我先一步醒来关掉了，就差一两分钟，总体来说，这个梦真的很怪诞（甚至这个词都不尽贴切）可惜急着出去，只稍微写了几个关键词，到晚上才认真写下来，要不然应该能把场景都联系起来的。</p>]]></content:encoded>
+      
+      
+      <category domain="https://blog.southfox.tk/categories/%E6%A2%A6%E8%AE%B0/">梦记</category>
+      
+      
+      <category domain="https://blog.southfox.tk/tags/%E6%A2%A6%E8%AE%B0/">梦记</category>
+      
+      
+      <comments>https://blog.southfox.tk/2020/11/11-25%E6%A2%A6%E8%AE%B0/#disqus_thread</comments>
+      
+    </item>
+    
+    <item>
+      <title>9-25梦记</title>
+      <link>https://blog.southfox.tk/2020/09/9-25%E6%A2%A6%E8%AE%B0/</link>
+      <guid>https://blog.southfox.tk/2020/09/9-25%E6%A2%A6%E8%AE%B0/</guid>
+      <pubDate>Fri, 25 Sep 2020 14:45:40 GMT</pubDate>
+      
+      <description>&lt;h2 id=&quot;没有火的世界&quot;&gt;&lt;a href=&quot;#没有火的世界&quot; class=&quot;headerlink&quot; title=&quot;没有火的世界&quot;&gt;&lt;/a&gt;没有火的世界&lt;/h2&gt;&lt;p&gt;漆黑一片，周围全是黑暗。面前是一盏探照灯，正往脚下射着灯光，但是发出的光甚至连脚下的黑暗也驱散不开。&lt;/p&gt;
+&lt;p&gt;这一段场景似乎给后面光与暗的主题做了铺垫。&lt;/p&gt;</description>
+      
+      
+      
+      <content:encoded><![CDATA[<h2 id="没有火的世界"><a href="#没有火的世界" class="headerlink" title="没有火的世界"></a>没有火的世界</h2><p>漆黑一片，周围全是黑暗。面前是一盏探照灯，正往脚下射着灯光，但是发出的光甚至连脚下的黑暗也驱散不开。</p><p>这一段场景似乎给后面光与暗的主题做了铺垫。</p><a id="more"></a><p>之后，我似乎梦见我在学校，躲在一个柜子里。外面一片漆黑，过了几秒中，之前还在的一个人就这样消失了。似乎在这个世界里，在黑暗的地方待得太久就会神隐。</p><p>之后我就打算出去走走，到学校周围，还拉上了两个人（但是不知道是谁），我们走到了学校周围，但是看景象，是现实中家的周围，不是学校的周围。走到一半，天空就暗了下来，是因为日食？还是云彩地遮蔽？之后我们就恐慌了，急切的想要寻找一个开着的店铺进去避难，但是店铺都关门了，外面只剩下恐慌的我们三个。其中一个人不顾一切撞进了一间关着的店铺，而我们两个找到了一间开着的饭店一样的地方进去了，饭店内只有中间的一间桌子有灯光，周围都是黑的，我们就在那里避难了。</p><p>之后，不知道是我们自己的发现还是店主人的邀请，我们在二楼安顿了下来，二楼似乎是一间酒店，房间一排排的布置过去，我在其中一间房间住着，等到外面不在黑了再出去，另外那个落单的人我们也在出去的时候找到了，原来那个店铺连接着一处购物广场，他就在那儿避了难（不过现实世界中，那片地区是没有购物广场的）。</p><p>之后我又到了类似小巷的地方，跟某人攀谈了起来，了解到只要在黑暗的地方待上十秒，人就会消失不见——然后我就在他背后看见了幕后黑手。是一个长着两只长脚的新浪微博（？），总之不会让人感到太恐怖就对了。然后他问我，要不要加入他们，成为他们——我很确定是不是出现这样的桥段是因为我变身系的故事读多了……尤其是克系的。</p><p>发生这段对话时，已经是在半梦半醒的状态了，开始能感知到现实世界，所以就不打算管那个新浪微博，直接醒了过来，拿起手机，四点四十三分，距离闹钟还有两分钟，我还以为我又没听到闹钟呢。前几天睡的太晚，导致睡得很死，所以半夜定的闹钟基本没听到，今天十一点半睡的，甚至还自然醒了，之后就上了个厕所，再睡了下去。</p><h2 id="豆？"><a href="#豆？" class="headerlink" title="豆？"></a>豆？</h2><p>之后再睡回去的梦，就是在课堂上了，老师是初中时代的班主任，虽然是历史，但是我们似乎在写作文的样子，主题是关于豆，我似乎没怎么主意的样子，涂涂写写的，改了又改。</p><p>之后索性拿出电脑，往桌上一摆，用电脑写了起来（?），写了一些，被周围的人看见，吐槽到，那么小的字体，真是近视眼？</p>]]></content:encoded>
+      
+      
+      <category domain="https://blog.southfox.tk/categories/%E6%A2%A6%E8%AE%B0/">梦记</category>
+      
+      
+      <category domain="https://blog.southfox.tk/tags/%E6%A2%A6%E8%AE%B0/">梦记</category>
+      
+      
+      <comments>https://blog.southfox.tk/2020/09/9-25%E6%A2%A6%E8%AE%B0/#disqus_thread</comments>
+      
+    </item>
+    
+    <item>
+      <title>美丽新世界!</title>
+      <link>https://blog.southfox.tk/2020/09/Brave-new-world/</link>
+      <guid>https://blog.southfox.tk/2020/09/Brave-new-world/</guid>
+      <pubDate>Sat, 05 Sep 2020 17:16:09 GMT</pubDate>
+      
+      <description>&lt;p&gt;现在是福帝112年了，我们距离美丽新世界，更近一步了吗？&lt;/p&gt;
+&lt;p&gt;睡眠教育和人工孵化还是幻想，唆麻仍未出现，人类还在用着老套的香烟酒精。但是在满足欲望这一点，似乎有了些影子。&lt;/p&gt;</description>
+      
+      
+      
+      <content:encoded><![CDATA[<p>现在是福帝112年了，我们距离美丽新世界，更近一步了吗？</p><p>睡眠教育和人工孵化还是幻想，唆麻仍未出现，人类还在用着老套的香烟酒精。但是在满足欲望这一点，似乎有了些影子。</p><a id="more"></a><p>现在的网络服务，为了挣钱，为了留住用户，已经是推荐算法的天下了。只要你看了一个猫猫对狗狗使用喵喵拳的搞笑视频，那么推荐列表上就要充斥着类似的视频了。推荐算法似乎让用户的信息形成了一个茧房，让其他信息都被隔绝在外？</p><p>但是人类本来就是偏见的，小时候拿到一本杂志，也就只会翻阅上面的笑话栏目，其他的，实在没兴趣。走到餐厅时，大概率也只会熟悉的窗口前，点上熟悉的菜品，至于尝试下新菜？还是下次、下下次吧。推荐算法只是顺应了人们的需求罢了，说信息之茧是由推荐算法导致的话，那也太“折煞”推荐算法了。</p><p>赫胥黎到是更近一步，虽然因为时代所困，没有在《美丽新世界》里写到互联网（还有对待大自然的观点，现在大自然反而是更贵的），但是对于满足欲望这一点，倒是大书特书——所有人都属于所有人，音乐、旅游、无限制的性，一切欲望都给予满足，这样人就不会激动，人不激动，社会就不会动荡。</p><blockquote><p>“你这个傻孩子！”她说，“我是多么想要你呀！你既然也想要我那为什么不……”</p></blockquote><p>从保留地出来的野蛮人，没有见识过文明人不需要走爱情这道程序就能快进到直接上床的架势给吓住了，这种寓言式的场景不经让人深思（除了本子画师）。</p><p>很难想象这种场景是否会真地出现，但是推荐算法为了贴合人们的欲望，让整个互联网变得越加轻松倒是真的了。喜欢的东西总能被推荐算法第一时间分发，总能找到看得下去的东西，只要，你肯交出你的数据。</p><p>似乎这是老调重弹，毕竟每一次新的传播途径的发展，都会引起人们的大加批判，苏格拉底对于文字、担忧广播电视的出现会导致人们丧失文字特有的思维。担忧推荐算法的滥用，是不是也能归进这一类呢？可是，相比以往的信息传播方式，推荐算法必然要获取用户的数据，才能做到精确推送。这一次，已经是要让人本身都得参与进来。</p><p>看着视频网站的推荐视频，会是新时代的汪汪狗崽离心球吗？对于网络世界不停出现的热梗，颇有点“要看鞭子功”的味道。</p><p>最后在想到到伊普西隆阶级的人都一个胚胎分化出几千个人，每个人长的都一个样，让人觉得恐怖，“那些面孔，那些老是重复的面孔——那么多人却只有一张脸——一模一样的灰色大眼，像哈巴狗一样……”让我突然想到西方人对东方人的一些刻板印象，似乎还说阅兵仪式让人感到害怕，为什么？从这里就能看出一二了吧。</p>]]></content:encoded>
+      
+      
+      <category domain="https://blog.southfox.tk/categories/%E9%9A%8F%E7%AC%94/">随笔</category>
+      
+      
+      <category domain="https://blog.southfox.tk/tags/%E9%9A%8F%E7%AC%94/">随笔</category>
+      
+      <category domain="https://blog.southfox.tk/tags/%E7%A7%91%E6%8A%80/">科技</category>
+      
+      <category domain="https://blog.southfox.tk/tags/%E8%AF%BB%E5%90%8E%E6%84%9F/">读后感</category>
+      
+      
+      <comments>https://blog.southfox.tk/2020/09/Brave-new-world/#disqus_thread</comments>
+      
+    </item>
+    
+    <item>
+      <title>九月！</title>
+      <link>https://blog.southfox.tk/2020/09/%E4%B9%9D%E6%9C%88%EF%BC%81/</link>
+      <guid>https://blog.southfox.tk/2020/09/%E4%B9%9D%E6%9C%88%EF%BC%81/</guid>
+      <pubDate>Thu, 03 Sep 2020 16:45:04 GMT</pubDate>
+      
+      <description>&lt;p&gt;九月！意味着开学季，是一直不想面对的月份。但在2020年这个魔幻的年份，这一次的九月，当然也是不同往常。&lt;/p&gt;</description>
+      
+      
+      
+      <content:encoded><![CDATA[<p>九月！意味着开学季，是一直不想面对的月份。但在2020年这个魔幻的年份，这一次的九月，当然也是不同往常。</p><a id="more"></a><p><img src="https://img.southfox.ga/2020/09/03/qnr5al.jpg" alt=""></p><h2 id="8-32"><a href="#8-32" class="headerlink" title="8.32"></a>8.32</h2><p>熵一直在增加，而我并没有活得像一个智慧生物一样，将周围的事物从熵从高状态整理到低状态。随着时间之矢地飞过，混乱是不可避免的，希望九月，能多点清醒吧。</p>]]></content:encoded>
+      
+      
+      <category domain="https://blog.southfox.tk/categories/%E6%97%A5%E5%B8%B8/">日常</category>
+      
+      
+      <category domain="https://blog.southfox.tk/tags/%E6%97%A5%E5%B8%B8/">日常</category>
+      
+      
+      <comments>https://blog.southfox.tk/2020/09/%E4%B9%9D%E6%9C%88%EF%BC%81/#disqus_thread</comments>
+      
+    </item>
+    
+    <item>
+      <title>舞</title>
+      <link>https://blog.southfox.tk/2020/07/%E8%88%9E/</link>
+      <guid>https://blog.southfox.tk/2020/07/%E8%88%9E/</guid>
+      <pubDate>Mon, 27 Jul 2020 11:33:02 GMT</pubDate>
+      
+      <description>&lt;blockquote&gt;
+&lt;p&gt;故事一定要有观点——不管是什么观点，而且一个出彩的故事，还必须跟情节、风格、环境、结构等等牢牢地结合起来。可惜作为以梦为基石的梦说，故事很难有一个观点，甚至逻辑都很难成型，所以，只好就这样了吧。&lt;/p&gt;
+&lt;/blockquote&gt;</description>
+      
+      
+      
+      <content:encoded><![CDATA[<blockquote><p>故事一定要有观点——不管是什么观点，而且一个出彩的故事，还必须跟情节、风格、环境、结构等等牢牢地结合起来。可惜作为以梦为基石的梦说，故事很难有一个观点，甚至逻辑都很难成型，所以，只好就这样了吧。</p></blockquote><a id="more"></a><h2 id="一"><a href="#一" class="headerlink" title="一"></a>一</h2><p>“看，他现在正在梁上跳舞呢。”</p><p>“哼，就算房梁上很黑，一些眼力好的早就看到了吧，真当全部人都是瞎子吗？”</p><p>“啊，已经有人摸上去了，他还在跳呢，真是个笨蛋。”</p><p>两个穿着精良的守卫已经从房梁外侧接近跳舞中的黑猫，但是黑猫依然在专注地跳着，全然不把周围的动静放在眼里。</p><p>咚——黑猫被守卫卡着脖子，甩在梁上，一抹银色从黑猫的口袋中划出，往地上掉去，是一把小钥匙。此时，国王正从房梁下走过，钥匙正巧掉在国王托在地上的长袍上，悄无声息。</p><h2 id="二"><a href="#二" class="headerlink" title="二"></a>二</h2><p>一名扫地仆发现国王的二弟死于家中，顿时引起皇室内的一阵阵鸡飞狗跳，待到皇室这部腐朽的机器彻底运作起来，已经是好几天之后了。</p><p>圣堂内。</p><p>一个画板支在玻璃制的箱子前边，画家正拿着画笔，不时地从助手递过来的颜料盘中勾勒几笔到画上。画上画着的，正是死者，国王的二弟。</p><p>“你确定我们还有机会吗？”助手递过刷子，问道。</p><p>“也许有，也许没有。”画家心不在焉地答道。</p><p>“亵渎尸体可是很难的呢，尤其是现在，我都能感到好几股视线一直在盯着这里呢。”</p><p>“主要是黑猫的计划失败了，现在只能走一步看一步了。”画家放下手势，拿起了橡皮泥，擦去不满意的地方。</p><p>“啊，那个白痴，搞出那么大阵仗却什么都没干！白白浪费了宣传我们的大好机会。”似乎为了泄愤，助手拿着杵的力道都大了许多，发出了沉闷的响声。声音回荡在安静的大堂内，连蜡烛的火光都飘忽了起来。</p><h2 id="三"><a href="#三" class="headerlink" title="三"></a>三</h2><p>一声号响划破了天边的晨光，死者毕竟是皇亲国戚，排场自然是一等一的。主祭念着长长的谥号，很难相信里面有几分是真实的。</p><p>“喂！那棺材，是不是在颤动？”人群中，一人沉下脸往身旁人问去。</p><p>“嗯，而且……这波动，我们先离开这里，要不然就得倒霉了。”</p><p>十分钟后。</p><p>“吼——”一声嘶哑的喊声从棺材内喊出，香木制成的棺材显然承受不住这压力，产生了条条裂缝，而在裂缝中，不断有蠕动的肉泥流出来。</p><p>不多时，就在惊呆的主祭目光下，凝结成了十多米高的血肉巨人。</p><p>下一瞬间，血肉巨人抡起手臂，拍飞出去几个倒霉的家伙。</p><p>人群炸裂开来，惨叫声中却混着大笑，来自巨人的头上，是一只黑猫。</p><p>不远处的一座小塔楼上，一人拿着望远镜看着惨剧现场，“不敢相信，他竟然做到了。”</p><p>“是啊，而且在没有接触到尸体的情况下，不禁让人好奇他是怎么做到的。”</p><p>远处的巨人像扫开落叶一样清扫着人群。呼——又是一击，但这一击似乎扯动的幅度有点大，让站在顶上的人没有站稳，跌了下去。</p><p>“啊~果然是个笨蛋。”</p><p>……</p><h2 id="四"><a href="#四" class="headerlink" title="四"></a>四</h2><p>“所以……你是怎么办到的？我没有看到你接近尸体过。”</p><p>“你有没有听过一个说法，杀人凶手喜欢去参观尸体？就像一个艺术家去画展看自己的画作一样？”</p><p>“你是说……凶手是国王吗？就算这样，能影响到尸体吗？”</p><p>“哼哼，这就是关键所在了，直接接触有守卫的尸体施展仪式肯定很难，但是让一个本来就有机会接触尸体的人代我去呢？而且他肯定会下意识的支开守卫的。”</p><p>“……啊！钥匙，直接接触不行的话，就让物品来接触，没想到你的仪式技术这么厉害，能封装到这么小的物品上……不过，就算这样，为什么你还要跳舞呢？为了让自己成为诱饵放松他们的注意力？”</p><p>“谁知道呢？也许……我当时在梦游也说不定哦。”</p>]]></content:encoded>
+      
+      
+      <category domain="https://blog.southfox.tk/categories/%E6%A2%A6%E8%AF%B4/">梦说</category>
+      
+      
+      <category domain="https://blog.southfox.tk/tags/%E6%A2%A6%E8%AF%B4/">梦说</category>
+      
+      <category domain="https://blog.southfox.tk/tags/%E5%B0%8F%E8%AF%B4/">小说</category>
+      
+      
+      <comments>https://blog.southfox.tk/2020/07/%E8%88%9E/#disqus_thread</comments>
+      
+    </item>
+    
+    <item>
+      <title>7.21梦记</title>
+      <link>https://blog.southfox.tk/2020/07/7-21%E6%A2%A6%E8%AE%B0/</link>
+      <guid>https://blog.southfox.tk/2020/07/7-21%E6%A2%A6%E8%AE%B0/</guid>
+      <pubDate>Tue, 21 Jul 2020 09:22:38 GMT</pubDate>
+      
+      <description>&lt;p&gt;星期二 晚&lt;br&gt;在高中,似乎是在做卷子,不是我变成了高中,而是以现在的年龄去重读高中。&lt;/p&gt;</description>
+      
+      
+      
+      <content:encoded><![CDATA[<p>星期二 晚<br>在高中,似乎是在做卷子,不是我变成了高中,而是以现在的年龄去重读高中。</p><a id="more"></a><p>然后做的卷子做了两三道题就给老师改,然后再过一会儿老师就对答案了，一会儿,就到多选题了,但有几道题我觉得不像是数学题,考的是生活常识?</p><p>总之我拿起了浴室里的好像是清洁剂的东西左看右看,还沾满了地上的水,很脏的样子。</p><p>然后是动物圆,有一头狼死了,园长对外的视频说明情况,它已经活了二十多岁了,相当于人类的百岁了够可以了。然后在园里的人群中,有一个神婆的样子,走近去问她几个问题,就开始表演什么把戏起来,记得好像有一个全息房子!之后似乎聊上了园长,似乎她知道,还很敬重园长的母亲。之后我就去找园长,最后在个楼梯过道找到了他,我说外面有一个神婆,说很敬重你的母亲云云,园长好像很感动说了些什么。</p><p>(剩下两个场景,打蚊子,和去食堂抢饭,饭似乎没多少的样子,到我的时候盘里只剩下四个菜了…)</p>]]></content:encoded>
+      
+      
+      <category domain="https://blog.southfox.tk/categories/%E6%A2%A6%E8%AE%B0/">梦记</category>
+      
+      
+      <category domain="https://blog.southfox.tk/tags/%E6%A2%A6%E8%AE%B0/">梦记</category>
+      
+      
+      <comments>https://blog.southfox.tk/2020/07/7-21%E6%A2%A6%E8%AE%B0/#disqus_thread</comments>
+      
+    </item>
+    
+    <item>
+      <title>是时候为居家学习做打算了</title>
+      <link>https://blog.southfox.tk/2020/07/%E6%98%AF%E6%97%B6%E5%80%99%E4%B8%BA%E5%B1%85%E5%AE%B6%E5%AD%A6%E4%B9%A0%E5%81%9A%E6%89%93%E7%AE%97%E4%BA%86/</link>
+      <guid>https://blog.southfox.tk/2020/07/%E6%98%AF%E6%97%B6%E5%80%99%E4%B8%BA%E5%B1%85%E5%AE%B6%E5%AD%A6%E4%B9%A0%E5%81%9A%E6%89%93%E7%AE%97%E4%BA%86/</guid>
+      <pubDate>Sun, 19 Jul 2020 22:41:09 GMT</pubDate>
+      
+      <description>&lt;p&gt;马上，居家学习对我来说是一件避无可避的事情了，但因为众所周知的原因，似乎居家学习的效率不是很高，那么有什么方法来应对呢？&lt;/p&gt;</description>
+      
+      
+      
+      <content:encoded><![CDATA[<p>马上，居家学习对我来说是一件避无可避的事情了，但因为众所周知的原因，似乎居家学习的效率不是很高，那么有什么方法来应对呢？</p><a id="more"></a><h2 id="欺骗自己"><a href="#欺骗自己" class="headerlink" title="欺骗自己"></a>欺骗自己</h2><blockquote><p>我曾经从一个书商那里听过一个老绅士的故事。这个人靠写小说为生，并在家庭办公室内写作。这个人会在每天起床后下楼和妻子一同吃早餐，然后完成近五十年内从未间断的一系列晨间礼仪，包括：淋浴，剃须，穿上标准三件套，配上蝶形领结和四方手帕，拎起公文包，然后向自己的妻子吻别。随后走上仅约10步远的家庭工作室，关上门开始他早晨的写作工作。很显然，这个人已经推断出在家工作的唯一方法，就是假装他不在家。自我欺骗通常被认为是一种精神病态，但是在居家工作的情况下，它反而成为了一种维持精神健康的方法。这是一个自己和自己对抗的思维游戏。</p><p>​                    ——<a href="http://jandan.net/p/107120">如何居家工作？参考一下神经科学</a></p></blockquote><p>没错，一个重要的方法就是自欺欺人，营造一种让大脑进入状态的氛围。要营造一个重要的学习区域，除了专注的做一件事以外什么也不能做。就拿手机来说，手机被用来看视频、看有趣梗图、上社交软件吹水，所以，试图用手机来进行学习办公绝对是个蠢主意。因为对于大脑来说，手机已经是一个娱乐区域了，所以任何对于娱乐格格不入的事情都会被大脑抵触，学习也是一样的，如果一个学习的区域也让大脑产生了是娱乐区域的错觉，那么效率绝对是低下的。</p><blockquote><p>这套理论并不是说你需要在你的后院建一个家庭办公室来提高工作效率；它其实朴素地告诉我们不要在床上或是沙发上办公。找一个地方专门标注好，只用来工作，而不做任何其他事。哪怕仅仅只是换一个座位。</p></blockquote><p>同时，仪式感也是重要的一环，假装自己要去一个工作地点，家里的一切琐事都不用去担心了（虽然事实上反而是琐事烦你，而且因为在家里还是直接地烦）。甚至还可以加上一点想象，杂乱的书桌不见了，代替它的是一份铺满流光溢彩的。。。书桌，顶上装着的不是常见的日光灯管，可以变成一盏垂着的老式煤油灯（说到于此，我应该买一个台灯了，家里没有这样的东西，灯管的亮度还是稍显暗淡了），发挥自己的想象力，就像动森一样，不时地更换一下周边的装饰，哪怕是想象上的，让大脑能够区分开来，学习区域和其它区域的区别。</p><h2 id="GTD"><a href="#GTD" class="headerlink" title="GTD"></a>GTD</h2><p>同分心做斗争，GTD是一个好东西，只要能制造出一个由习惯编制的结构，就能在到点的时候下意识地做出对应的事。这方面我选择用<a href="https://habitica.com/">Habica</a> 。做为一个GTD软件来说，它批了一层RPG游戏的外表，让做规划表的和完成规划表这事变得有一些乐子，不像其他GTD软件，没有几丝颜色跟图片，给人一份压抑感。</p><p>当然，除了做表，实行是一件难事，尤其对我这种启动困难的人来说，有时候经常就会连比对清单这件事本身都忘个精光，所以，必须要有一个外界督促，比如使用QQ机器人每隔一段时间发一条提醒消息，或是用Tasker写一些提醒的脚本（倒计时脚本也可以随便做了）。</p><h2 id="Tasker"><a href="#Tasker" class="headerlink" title="Tasker"></a>Tasker</h2><p>说到手机制造分心的问题，就要考虑一下Tasker了，除了提醒脚本，也可以做限定脚本，在一个时间段内，就会自动开启免打扰模式并且强制让大部分应用不可用（如果懒得写的话，可以考虑专注森林这样类似功能的APP）。</p><p>并且，肝手游自动化这个功能（1-7地狱），也可以用Tasker来进行摆脱，就不用自己不时得去查看手机了。</p><h2 id="笔记系统"><a href="#笔记系统" class="headerlink" title="笔记系统"></a>笔记系统</h2><p>除非是超忆症患者，否则使用笔记系统对于学习来说是有大帮助的，思维导图、Cornell Notes，之类的系统，也应该再深入研究一下，值得花一些时间去琢磨，一段时间再换另外一个，比较一下哪个系统是最符合自身的。</p><p>而对于笔记软件来说，<a href="https://www.notion.so/">Notion</a>是一个新兴的笔记软件，同<a href="https://habitica.com/">Habica</a> 一样，也是我用过一段时间，但是并没有太深入使用，也许也该花点时间琢磨了，听说最近还取消了个人免费版的笔记条数限制，是时候该用起来了。</p><p>而对于记笔记来说，我想也应该多用点鲜艳的颜色、图片，以往的单颜色就干巴巴写下去对我来说确实是兴趣乏乏，一样，是时候去寻找对于自身最适合的笔记形式了。那么要怎么对比呢？月度总结笔记是一个点子，每到月底反思一下要做的事，评比一下似乎是有帮助的，当然。。。只要我能做得到。</p>]]></content:encoded>
+      
+      
+      <category domain="https://blog.southfox.tk/categories/%E9%9A%8F%E7%AC%94/">随笔</category>
+      
+      
+      <category domain="https://blog.southfox.tk/tags/%E9%9A%8F%E7%AC%94/">随笔</category>
+      
+      <category domain="https://blog.southfox.tk/tags/%E5%AD%A6%E4%B9%A0/">学习</category>
+      
+      
+      <comments>https://blog.southfox.tk/2020/07/%E6%98%AF%E6%97%B6%E5%80%99%E4%B8%BA%E5%B1%85%E5%AE%B6%E5%AD%A6%E4%B9%A0%E5%81%9A%E6%89%93%E7%AE%97%E4%BA%86/#disqus_thread</comments>
+      
+    </item>
+    
+    <item>
+      <title>当个精神病病人是种怎样的体验？</title>
+      <link>https://blog.southfox.tk/2020/06/%E5%BD%93%E4%B8%AA%E7%B2%BE%E7%A5%9E%E7%97%85%E7%97%85%E4%BA%BA%E6%98%AF%E7%A7%8D%E6%80%8E%E6%A0%B7%E7%9A%84%E4%BD%93%E9%AA%8C%EF%BC%9F/</link>
+      <guid>https://blog.southfox.tk/2020/06/%E5%BD%93%E4%B8%AA%E7%B2%BE%E7%A5%9E%E7%97%85%E7%97%85%E4%BA%BA%E6%98%AF%E7%A7%8D%E6%80%8E%E6%A0%B7%E7%9A%84%E4%BD%93%E9%AA%8C%EF%BC%9F/</guid>
+      <pubDate>Fri, 12 Jun 2020 22:20:24 GMT</pubDate>
+      
+      <description>&lt;p&gt;6.1 躺床上刷手机&lt;/p&gt;
+&lt;p&gt;6.2 躺床上刷手机&lt;/p&gt;
+&lt;p&gt;6.3 躺床上刷手机&lt;/p&gt;
+&lt;p&gt;6.4 你怎么能如此堕落！先前定下的学习计划你都忘了吗？子曰：“吾日三省吾身”。不能再这样下去了！&lt;/p&gt;
+&lt;p&gt;6.5 躺床上刷手机&lt;/p&gt;</description>
+      
+      
+      
+      <content:encoded><![CDATA[<p>6.1 躺床上刷手机</p><p>6.2 躺床上刷手机</p><p>6.3 躺床上刷手机</p><p>6.4 你怎么能如此堕落！先前定下的学习计划你都忘了吗？子曰：“吾日三省吾身”。不能再这样下去了！</p><p>6.5 躺床上刷手机</p><a id="more"></a><hr><p>如果一个人经常发生这样的事情，那么，对于他的评价，无非就是懒蛋吧。可是如果这并非他的本意呢？如果他已经非常努力想要去改变这一切呢？如果单纯凭意志力是无法战胜这一切的呢？真的吗？还有什么是无法凭着毅力战胜的呢？</p><p>精神疾病。</p><p>如果一个人是近视眼看不清东西，会怪是眼睛没有努力去看吗？同理，如果脑子出了问题的话？很多精神疾病并不是心里问题，而是生理问题。如果明白这一点的人多一点，那么说抑郁症只是单纯心理承受能力差的人会少一点吧？</p><p>而有那么一种人，经常让人感到飘忽不定，非常容易走神神，像是沉浸在自己的小世界，情绪不稳定，经常拖延、有始无终，让人觉得他就是蒙着一层面纱。会有这么离奇的病吗？</p><p>ADHD。</p><blockquote><p><strong>注意力缺陷多动障碍</strong>（英语：attention deficit hyperactivity disorder，缩写为<strong>ADHD</strong>），涵盖<strong>注意力缺失症</strong>（英语：attention deficit disorder，缩写为<strong>ADD</strong>），是<a href="https://zh.wikipedia.org/wiki/神經發展障礙">神经发展障碍</a>的<a href="https://zh.wikipedia.org/wiki/精神疾患">精神疾患</a>。它的特性是难以专注、过度活跃、做事不考虑后果等等。除此之外，还有不合年纪的行为，有注意力缺失的个体也可能有情绪难以调节的问题。</p><p>维基百科——<a href="https://zh.wikipedia.org/wiki/%E6%B3%A8%E6%84%8F%E5%8A%9B%E4%B8%8D%E8%B6%B3%E9%81%8E%E5%8B%95%E7%97%87">注意力缺陷多动障碍</a></p></blockquote><p>而一般成年ADHD患者会具有以下症状：</p><p><strong>注意：每一项标准都要比具有同等心智年龄的一般人明显强烈才算符合。</strong></p><ol><li>低成就感，老是感觉自己潜力尚未发挥（不论现实成就如何）。</li><li><del>组织困难。</del></li><li><strong><del>长期拖延，很难开始做一件事。</del></strong></li><li><del>同时做好几件事，全部有头无尾。</del></li><li>不看场合时机，想到什么说什么。</li><li>经常追求刺激。</li><li>受不了无聊。</li><li><strong><del>经常分心，无法专注。话说到一半或书看到一般就分神了，但有时候又能超级专注。</del></strong></li><li>往往直觉强、有创造力、很聪明。</li><li>很难按照规则行事。</li><li><del><em>没耐性，无法忍受挫折。</em></del></li><li>有言语冲动，脾气不好，<del>乱花钱、时时改变计划、一天到晚开始新的计划</del>。</li><li>经常不必要的担心，没事就找事担心，但是又不注意危险。</li><li><del>有不安全感。</del></li><li><del>情绪不稳，尤其和人或事情断绝关系。</del></li><li><del>身心静不下来。</del></li><li><del>有成瘾倾向。</del></li><li>长期自我形象困扰。</li><li>自我观察不正确。</li><li>家族中有其他人患有ADHD或躁郁症、抑郁症、酗酒吸毒以及其他情绪冲动型疾患。<del>（待调查）</del></li></ol><p><em>（其中画——的表明是自己体感有这个症状的）</em></p><p>从小学到高中，我的评价手册基本都写着，我是一个聪明的孩子，如果能把聪明劲儿更用到学习上就最好了。</p><p>可我觉得这都是面子话罢了，我一直都不觉得自己聪明，看书看第一章，然后下一章又翻到第七章去了，干着一件事，不超过20分钟就跑去干别的事情去了。世界像是蒙了一层面纱一样，朦胧胧的，每天就绕着广场踱步，想着自己都不清楚的东西。学习成绩全看我能不能趁着撩开身上的面纱学多一点，这样的状态，能叫聪明吗？我也隐隐约约注意到了自己这种状态，之后因为成绩跟家里人绊嘴时，我说我根本集中不了注意力，我父母却又说我只是懒散，就只会找借口罢了。说着说着，我都接受自己是个懒蛋的设定了。</p><p>做为00年出生的人，悠悠二十年，才终于发现自己身上的怪奇并不是孤例，而是能够被一个专有名词所概括的，我终于能长抒一口气。就像一个整天眯着眼睛看世界的小孩，开始觉得自己是个瞎子的时候，却被旁人告知“诶呀，你近视了吧？”</p><p>但是知道是不够的，知道问题还是要面对它，解决它。</p><h4 id="药物"><a href="#药物" class="headerlink" title="药物"></a>药物</h4><p>药物可以给患者带来极大的改变。就像眼镜对于近视眼一样。咖啡因、酒精、香烟的提神作用对于ADHD患者来说，反而能起到提升专注的效果（所以成年ADHD患者很容易产生物品滥用的症状）。不过鉴于现在国内有能力去确诊成年ADHD的太少了，我可能需要等待我有一大段空闲时间才去医院吧。</p><h4 id="团体"><a href="#团体" class="headerlink" title="团体"></a>团体</h4><blockquote><p>参加一个支持团体。在一些ADHD团体中可以得到很多帮助。同病相怜的心理支持也是很重要的。</p></blockquote><p>也许我需要留意一下。。。不过我总觉得，我是不会去找的（</p><h4 id="结构"><a href="#结构" class="headerlink" title="结构"></a>结构</h4><blockquote><p>ADHD患者需要一个外在结构，一旦有了结构就像滑梯的两壁一样防止人们冲出去。可以使用清单、笔记本标出重点并形成这种习惯，利用有提醒功能的工具，制定并查看文件。</p></blockquote><p>这确实有效，将事情记在笔记本上确实能事情迎来开头，但是有可能会连这件事本身都能够陷入拖延的泥沼，更别谈养成习惯了。</p><h4 id="教练"><a href="#教练" class="headerlink" title="教练"></a>教练</h4><blockquote><p>ADHD患者是很难战胜自己的，选择一位教练让自己保持秩序，专注与正在进行的事，鼓励你、提醒你。朋友、同事、心理治疗师都可以当这位教练。</p></blockquote><p>可以使用一些专注力提醒工具，比如一些插件、脚本、APP形成一套ToolChain，在分神摸鱼的时候提醒自己，鱼鱼咸也可以加入这一套，定时地提醒自己。或是请人来敦促自己。</p><h4 id="期限"><a href="#期限" class="headerlink" title="期限"></a>期限</h4><p>DeadLine永远是第一生产力。</p><h4 id="分割排列"><a href="#分割排列" class="headerlink" title="分割排列"></a>分割排列</h4><p>大计划总会吓到人，尽可能一步一步分成不那么吓人的小计划。</p><p>之后再排列事情的重要顺序，不要拖延。不要让多个事情搞得自己一无所措，不要拖延，深呼吸，专注于第一顺位的事儿上。</p><h4 id="接受"><a href="#接受" class="headerlink" title="接受"></a>接受</h4><p>总有一些事是必定失败，有一些计划必定行不通，有一些关系必定走向尽头，做好准备。</p><p>不要固守传统，既然自己是异于大多数的，那么，也没必要强求自己，既然自己容易分心，那么为什么接受呢，就让自己的专注随意流淌，而且为什么不同时做两件事呢？就像电脑的多线程一样，永远不完做一件事倒不如花3倍时间做两件事情。找到自己真正的风格。</p>]]></content:encoded>
+      
+      
+      <category domain="https://blog.southfox.tk/categories/%E9%9A%8F%E7%AC%94/">随笔</category>
+      
+      
+      <category domain="https://blog.southfox.tk/tags/%E9%9A%8F%E7%AC%94/">随笔</category>
+      
+      <category domain="https://blog.southfox.tk/tags/ADHD/">ADHD</category>
+      
+      
+      <comments>https://blog.southfox.tk/2020/06/%E5%BD%93%E4%B8%AA%E7%B2%BE%E7%A5%9E%E7%97%85%E7%97%85%E4%BA%BA%E6%98%AF%E7%A7%8D%E6%80%8E%E6%A0%B7%E7%9A%84%E4%BD%93%E9%AA%8C%EF%BC%9F/#disqus_thread</comments>
+      
+    </item>
+    
+    <item>
+      <title>浅推COVID-19</title>
+      <link>https://blog.southfox.tk/2020/05/%E6%B5%85%E6%8E%A8%C2%96COVID-19/</link>
+      <guid>https://blog.southfox.tk/2020/05/%E6%B5%85%E6%8E%A8%C2%96COVID-19/</guid>
+      <pubDate>Thu, 28 May 2020 09:24:45 GMT</pubDate>
+      
+      <description>&lt;p&gt;一场突如其来的瘟疫，打的整个世界错手不及。&lt;/p&gt;</description>
+      
+      
+      
+      <content:encoded><![CDATA[<p>一场突如其来的瘟疫，打的整个世界错手不及。</p><a id="more"></a><p>在家闲极无聊，打算以另一种方式来推算疫情。</p><p>2019 乙亥年</p><p>此年入阳遁48局</p><p>　　　巽│巳　午│未<br>　　伤　│　杜　│　景<br>　辰　９│离　２│７　坤</p><p>　卯　震│中　　│兑　申<br>　　生　│　　　│　死<br>　寅　４│　　５│６　酉</p><p>　艮　３│坎　８│１　戌<br>　　休　│　开　│　惊<br>　　　丑│子　亥│乾</p><p>主算一，为无天无地之算，客算五，为五天之算，应此灾。</p><p>始宫加临寅宫，对应楚地，正好是现在的湖南、湖北一带，但发源地在哪？太乙落巽宫，为东南方向，具体不明。</p><p>而<a href="[https://zh.wikipedia.org/wiki/2019%E5%86%A0%E7%8A%B6%E7%97%85%E6%AF%92%E7%97%85%E7%96%AB%E6%83%85](https://zh.wikipedia.org/wiki/2019冠状病毒病疫情)">维基百科</a>说：</p><blockquote><p>在原发疫源地调查方面，政府及社会在疫情最初期曾普遍相信位于湖北省武汉市的华南海鲜市场是病毒发源地。但进一步的研究结果则认为华南海鲜市场并非疫情发源地。黄朝林等在《柳叶刀》期刊发布的论文指，当时认为属首例的、12月1日发病的新冠肺炎患者没有去过武汉华南海鲜市场，最初入院的41个确诊病例中有13个与华南海鲜市场无关，故认为<strong>华南海鲜市场并非疫情原发疫源地</strong>。2月20日中国科学院西双版纳热带植物园等机构发布的论文预印本基于全基因组数据解析新型冠状病毒的演化和传播，亦佐证了华南海鲜市场并非疫情原发疫源地的观点，但认为武汉可能是疫情发源地。另一方面，何大一、西莫·加利、朱塞佩·雷穆齐等认为武汉市为疫情来源地。钟南山认为没有证据表明疫情源头在武汉。彼得·福斯特、科林·伦福儒等则认为没有证据表明疫情源头在武汉，但有95%几率可能来源于广东。曹彬等认为该病毒的实际来源尚不明确，仍需进一步研究。丹尼尔·露西在《科学》中指出，对动物及其供应商的血液样本、确诊患者的血液样本进行回顾性分析可能会揭示新冠病毒的起源地。</p></blockquote><p>而至于瘟疫发行时间，用移动合神的方法推为四月，与现实不符。故用五行生克计算，始击为木，十二月建丑为土，木克土所以发瘟（但我觉得说服力不够）。</p><p>接下来是2020年</p><p>此年入阳遁49局</p><p>　　　巽│巳　午│未<br>　　惊　│　开　│　休<br>　辰　９│离　２│７　坤</p><p>　卯　震│中　　│兑　申<br>　　死　│　　　│　生<br>　寅　４│　　５│６　酉</p><p>　艮　３│坎　８│１　戌<br>　　景　│　杜　│　伤<br>　　　丑│子　亥│乾</p><p>主算二十四，无地之算，客算二十五杜塞之算 。</p><p>合神移至艮为格，艮为十二月往一月冬春之交，正好于今年流行的趋势大致相同。</p><p>而始击辰绝于巳，为农历四月，所以国内疫情形势大概会在6月21夏至之前完全转好。。。吧？</p><p>而这几年得卦中孚，有道是：中信为本，厄难消除。</p>]]></content:encoded>
+      
+      
+      <category domain="https://blog.southfox.tk/categories/%E9%9A%8F%E7%AC%94/">随笔</category>
+      
+      
+      <category domain="https://blog.southfox.tk/tags/%E9%9A%8F%E7%AC%94/">随笔</category>
+      
+      <category domain="https://blog.southfox.tk/tags/%E6%9C%AF%E6%95%B0/">术数</category>
+      
+      
+      <comments>https://blog.southfox.tk/2020/05/%E6%B5%85%E6%8E%A8%C2%96COVID-19/#disqus_thread</comments>
+      
+    </item>
+    
+    <item>
+      <title>十年</title>
+      <link>https://blog.southfox.tk/2020/05/%E5%8D%81%E5%B9%B4/</link>
+      <guid>https://blog.southfox.tk/2020/05/%E5%8D%81%E5%B9%B4/</guid>
+      <pubDate>Tue, 26 May 2020 11:01:26 GMT</pubDate>
+      
+      <description>&lt;p&gt;2020年5月26日&lt;/p&gt;
+&lt;p&gt;在一个在被外星势力入侵的地球里，某一个街头站着小女孩。&lt;/p&gt;</description>
+      
+      
+      
+      <content:encoded><![CDATA[<p>2020年5月26日</p><p>在一个在被外星势力入侵的地球里，某一个街头站着小女孩。</p><a id="more"></a><p>她展露一个微笑，就像影视作品里坏人得逞那种微笑，然后，我就被抓起来了。可能是被告密了，外星势力跟地球对抗好像是势均力敌的。我被冠上一个特别的罪名，似乎能完全引爆两边的关系的样子，而为了避免麻烦，我就被抓起来押送到敌方那里了。</p><p>我的牢房似乎跟现实中住的房子一样？但梦中的念头一转，对我就是十年，这十年我似乎过得不怎么样，浑身一股近似绝望的怒气。一天，我待在阳台洗衣服，发现我的妈妈待在那里，我没有被吓到，只是杵在那里，连确认我妈妈是真实还是幻象的动作都没有做。我只是待在那里想，终于想出了，我是可以逃离这片境地的。</p><p>然后，我就逃出来了（梦也没有交代是用什么方法），我回到了熟悉的景象中，但十年过去了，早已经物是人非，家里望过去也是杂草和蜘蛛网横行，一片破败。然后我又来到了校园里，似乎我以前的好友也在？他上前跟我打招呼，但是我只是望着商店橱柜里的物品沉默不语。</p><p>然后我惊醒了，梦里那种物是人非的感情是这样地真切，拿起手机看时间，是六点半，少见的不被闹钟惊醒的早晨。</p>]]></content:encoded>
+      
+      
+      <category domain="https://blog.southfox.tk/categories/%E6%A2%A6%E8%AE%B0/">梦记</category>
+      
+      
+      <category domain="https://blog.southfox.tk/tags/%E6%A2%A6%E8%AE%B0/">梦记</category>
+      
+      
+      <comments>https://blog.southfox.tk/2020/05/%E5%8D%81%E5%B9%B4/#disqus_thread</comments>
+      
+    </item>
+    
+    <item>
+      <title>方舟同人游戏开发记录00</title>
+      <link>https://blog.southfox.tk/2020/05/%E6%96%B9%E8%88%9F%E5%90%8C%E4%BA%BA%E6%B8%B8%E6%88%8F%E5%BC%80%E5%8F%91%E8%AE%B0%E5%BD%9500/</link>
+      <guid>https://blog.southfox.tk/2020/05/%E6%96%B9%E8%88%9F%E5%90%8C%E4%BA%BA%E6%B8%B8%E6%88%8F%E5%BC%80%E5%8F%91%E8%AE%B0%E5%BD%9500/</guid>
+      <pubDate>Fri, 22 May 2020 19:21:12 GMT</pubDate>
+      
+      <description>&lt;p&gt;从一个蝙蝠开始，世界开始发生了翻天覆地的变化，也有无数人开始闲地发霉了，对，我也包括在内。&lt;/p&gt;
+&lt;p&gt;更不幸的是，因为家里人持有一种广东特有的家宅风水情结，所以选择了在房子建成二十年后的今年开始动工翻新屋子，电钻声绕梁二月而不止，我每天都在电钻闹钟的环境下醒来，差点没成神经衰落。而在这痛苦的环境下，我也打算做一些有意思的事来发散身心。。。&lt;/p&gt;</description>
+      
+      
+      
+      <content:encoded><![CDATA[<p>从一个蝙蝠开始，世界开始发生了翻天覆地的变化，也有无数人开始闲地发霉了，对，我也包括在内。</p><p>更不幸的是，因为家里人持有一种广东特有的家宅风水情结，所以选择了在房子建成二十年后的今年开始动工翻新屋子，电钻声绕梁二月而不止，我每天都在电钻闹钟的环境下醒来，差点没成神经衰落。而在这痛苦的环境下，我也打算做一些有意思的事来发散身心。。。</p><a id="more"></a><p>所以，就来做游戏吧，刚好也碰到了一个非常适合一个人把玩的游戏引擎——Godot。</p><p>godot是一个完全开源的小型游戏引擎，大小只有60M（当然只是基础功能，要导出的话还要安装400多M的扩展），相比其他的商业引擎，简直就是零头！而且作为开源引擎，没有商业引擎的烟火气息，社区十分友好，想要定制什么功能也不需要取得任何人的同意，马上就能自己开搞。当然，缺点就是，比起其他商业引擎，godot在国内的名声实在太小了，没有什么成型的中文教程。不过只要下定决心，抱着英语硬啃也不痛苦。</p><p>那么，来做什么游戏呢?这是因为我现在看的教程是一个动作Rpg的游戏教程，所以就做一个动作Rpg游戏吧（没错，就是这么随便）。</p><p>那么，敲定了游戏类型，就来琢磨一下游戏内容吧，单是自己原创的话。。。虽然自己是一个爱胡思乱想的人，但是脑中想的并没有成型，设定啥的要细想那可太废脑细胞了，所以就套现成的吧（没错，就是这么随便）。</p><p>那么，就来选明日方舟吧，毕竟这个游戏也以世界观著名，非常适合同人创作，主角的话，就定个陈吧（没错，就是这么随便）。现在想来，这个想法，有可能是受到了这个<a href="https://www.bilibili.com/video/BV1hK411L7nq">视频</a>的影响，毕竟动作游戏和塔防游戏，动与静的对立，想想就有趣。而且再加上陈在第七章主线剧情的走向，也非常适合散发脑洞呢。</p><p>那么，大体剧情就是陈上了切城，沿路砍砍砍，最后跟塔露拉对砍，砍爆一切的游戏。（没错，就是这么随便）</p><h2 id="细节"><a href="#细节" class="headerlink" title="细节"></a>细节</h2><h4 id="总体"><a href="#总体" class="headerlink" title="总体"></a>总体</h4><p>游戏游玩时间应该保持在一到两小时左右的长度，是一个砍爆一切的动作Rpg，应该有多重结局。</p><h4 id="画面"><a href="#画面" class="headerlink" title="画面"></a>画面</h4><p>游戏画面，就敲定像素风了（毕竟我也只对这个熟练），而且听说godot对于像素游戏支持还非常友好，其他一些著名的引擎制作像素风的游戏可能会产生令人恼火的问题。</p><p>那么，机制呢？</p><h4 id="机制"><a href="#机制" class="headerlink" title="机制"></a>机制</h4><p>机制无非就是主角上下左右移动，然后平砍带连击，能挥动两下，砍怪积攒技力，然后放点技能啥的。</p><p>等级上限是定在十级，升级带来升级点，然后打算做一个技能树，会可以解锁七八个具体的技能（有一些是变种，比如本家里的三技能绝影就可以改成范围型同时斩击范围里的敌人），但是只有三个技能格，可以在休息处自由搭配。</p><p>伤害也有为物理和魔法伤害这个设定（敌人当然也是），可以考虑后续升级做成选择向，让玩家升级后走一端，或者物魔双修？</p><p>然后就是休息处的设定，游戏打算做成平常不能回血（或者回血量不多），一些医疗物资要带到休息处才能选择回血，这样设定是因为会关于剧情以及多结局走向的。</p><h4 id="剧情"><a href="#剧情" class="headerlink" title="剧情"></a>剧情</h4><p>陈上切城，然后砍爆沿途小怪，然后跟塔露拉对峙的故事。（没错，就是官方本家的）</p><p>而且做成多结局，是根据休息处来算的，如果是多选择休息回血的话，那就会浪费时间，就可能会跟后面赶上来的罗德岛会合，发展一些剧情啥的，后续跟大boss的对峙的话，也会有罗德岛的帮助。而不选择休息回血的话，一路速通的话，就会发展不同的结局。大概是这样一个设定。。。吧。</p><h4 id="音乐音效"><a href="#音乐音效" class="headerlink" title="音乐音效"></a>音乐音效</h4><p>当然是直接照搬yj的啦（没错，就是这么随便），不过可能要处理一下，以最大程度地跟像素风切合。</p><h4 id="然而"><a href="#然而" class="headerlink" title="然而"></a>然而</h4><p>不过对于。。。一个刚学习的游戏引擎来说，我真的能成功实现出来吗？我现在都有点想不通二连击要怎么实现，还有对话系统，场景转移，数据转移。。。现在也只是刚实现走路动画而已。。。所以这也是写这个系列博文的原因吧，理清思想，坚定信心。</p><p>走一步看一步吧。</p>]]></content:encoded>
+      
+      
+      <category domain="https://blog.southfox.tk/categories/%E6%B8%B8%E6%88%8F/">游戏</category>
+      
+      
+      <category domain="https://blog.southfox.tk/tags/%E6%B8%B8%E6%88%8F/">游戏</category>
+      
+      <category domain="https://blog.southfox.tk/tags/%E6%B8%B8%E6%88%8F%E5%BC%80%E5%8F%91/">游戏开发</category>
+      
+      <category domain="https://blog.southfox.tk/tags/godot/">godot</category>
+      
+      
+      <comments>https://blog.southfox.tk/2020/05/%E6%96%B9%E8%88%9F%E5%90%8C%E4%BA%BA%E6%B8%B8%E6%88%8F%E5%BC%80%E5%8F%91%E8%AE%B0%E5%BD%9500/#disqus_thread</comments>
+      
+    </item>
+    
+    <item>
+      <title>Marzipan Solitude</title>
+      <link>https://blog.southfox.tk/2020/01/Marzipan-Solitude/</link>
+      <guid>https://blog.southfox.tk/2020/01/Marzipan-Solitude/</guid>
+      <pubDate>Thu, 30 Jan 2020 23:56:35 GMT</pubDate>
+      
+      <description>&lt;p&gt;&lt;img src=&quot;https://img.southfox.ga/2020/03/06/xi9ffb.png&quot; alt=&quot;&quot;&gt;&lt;/p&gt;
+&lt;p&gt;从前在6号楼的一间房间内，有一只杏仁糖做的小猪，某一天被扬起的窗帘拍在了沙发后面，个把月没有人理会它。可怜的小猪等啊等，但还是没有人过来……突然有一天，它听到了吱吱叫的声音，难道，救援来了吗？&lt;/p&gt;</description>
+      
+      
+      
+      <content:encoded><![CDATA[<p><img src="https://img.southfox.ga/2020/03/06/xi9ffb.png" alt=""></p><p>从前在6号楼的一间房间内，有一只杏仁糖做的小猪，某一天被扬起的窗帘拍在了沙发后面，个把月没有人理会它。可怜的小猪等啊等，但还是没有人过来……突然有一天，它听到了吱吱叫的声音，难道，救援来了吗？</p><a id="more"></a><p>是一只老鼠。按照正常的少儿片，老鼠见到小猪应该对他说几句，好让剧情能够发展一下，但本片根本不是一个“正常”的少儿片，老鼠没等小猪说出话来就把他给啃了。一个“心智健全”的社会人看到这肯定是会吓一跳的，差点要给本片打上一个儿童邪典的标签。</p><p> 再看，老鼠吃了小猪之后，就跟着甜蜜睡着了。凌晨三点的钟声响起，把老鼠给吵醒了。它开始思考，小猪被他吃掉前想说些什么，伴随着落地钟的滴答声。</p><p>他开始感到寂寞。</p><p>于是他跑到落地钟前，望着钟摆上的闪光说，“跟我说些什么吧。”老鼠说道。</p><blockquote><p>Night,</p><p>only,only,only,night.</p></blockquote><p>落地钟说道。</p><p>“再多说几句吧。”老鼠说道。</p><blockquote><p>Lonely,</p><p>lonely.lonely night.</p></blockquote><p>“啊!是孤独！”，“那只小猪想说的肯定是这个。”老鼠说道。</p><blockquote><p>Minutes, hours,days,and years.</p></blockquote><p>钟似乎除了报时之外什么也不会说。</p><p>“你有一张友善的脸”，“Make me happy.Love me, Do!”老鼠说道。</p><p>老鼠随即在落地钟上咬了一个小洞，钻了进去，盯着钟摆，期待着钟能对他再说些什么。</p><p>日复一日，老鼠都在晚上通过他咬的小洞钻进落地钟的体内，期待落地钟能对他讲些什么。但在之后的某一天，他不见了。</p><p>外面的猫头鹰在早上抓到了一只老鼠。</p><p>落地钟感受着身体里被那老鼠咬出的那一点空洞过着日子，一天，他的弹簧坏掉了，从此再也不能报时，但时间没有它照样流转。</p><p> ……</p><p> ……</p><p> ……</p><p>而在猫头鹰吃掉老鼠的那棵树下，开着一朵小粉花，一只蜜蜂飞了过去，品尝了一下。</p><p>“有趣”蜜蜂又嘬了一小口“啊，是杏仁味的！”蜜蜂越饮越多。</p><p>“我工作得实在太认真了！”蜜蜂说道。</p><p>他停止了发声，开始在花朵上歇息。</p><p>天气尚晴，远处火车的光一闪一闪飞过山脚。</p><p>蜜蜂睡着了，当他醒来时，只能看到镇上路灯和橱窗发出的光亮，脚步声在远处游荡。</p><p>蜜蜂抬头看着月亮，“啊！没有太阳，我根本不认识路，今夜只好在镇子度过了。”蜜蜂说道。</p><p>蜜蜂飞过路灯发出的柔光，看到6号楼有一扇窗子开着，一只芙蓉花探向窗边。</p><p>蜜蜂飞到房间里，见到盛着芙蓉花的花盘放在书架上，芙蓉花就这样向着窗边长去，让其可以看到外边的风景。</p><p>蜜蜂嗡嗡地绕着花儿飞着，看着芙蓉花粉色的脸庞，最后飞到黑暗处，好看见芙蓉花反射着路灯的样子。</p><p>“看够了吗？”芙蓉花转过身，用他尖细的声音说道。</p><p>“抱歉。”蜜蜂说道，“我本不想这样鲁莽。”他飞到窗沿上，好让芙蓉花能看清楚他。</p><p>“看起来你并不是一位绅士？”芙蓉花说道。</p><p>“不是。”蜜蜂说道，“我也不是一位女士，我只是一个 worker。”（worker 既有工人也有工蜂的意思）</p><p>“没关系。”芙蓉花说道，“并不是所有人都光鲜亮丽。”</p><p>“我本来可以当一个女王的。”蜜蜂反驳道。</p><p>“算了吧。”芙蓉花笑着说，“我还可能是一位公爵夫人呢，可我不是。”</p><p>蜜蜂跳起来，指了指芙蓉花，“你肯定花了好大功夫，才能看到窗外的风景。”蜜蜂说道。</p><p>“那不是我，是我身下的那棵植株。”芙蓉花说道，“植株待在那里，但花儿一直在变”</p><p>“马上就轮到我了，明天早上，我就要凋谢到地板上了。就像舞会过后的裙子一样皱巴巴的，至少我的最后一晚是一轮满月。”芙蓉花说道。</p><p>“我希望至少能有一点音乐”芙蓉花卷着花瓣，用他尖细的声音哼着调子，“这家人有时会放些唱片的，可惜他们今晚出去了。”芙蓉花说道，“最近越来越冷了，不是吗？”芙蓉花越发缩紧花瓣。</p><p>“可惜我不能唱歌给你”蜜蜂说道，“不过我会跳寻蜜舞，要我跳给你看吗？”</p><p>“哦，要的，”芙蓉花说道，“跳给我，务必！”，“就在窗边，这样我就能把你和月亮一起看在眼里。”</p><p>“这只舞是告诉别的蜜蜂，有最甜的蜜在这附近。”蜜蜂说道。</p><p>“甜蜜，甜蜜，最甜蜜，甜蜜，甜蜜，往这里。”蜜蜂随着话语跳了起来。</p><p>“甜蜜，甜蜜，最甜蜜……”芙蓉花咕哝道。蜜蜂在窗台上跳着，远处的火车一闪一闪的灯光伴随着柔和的月光照向窗前。“甜蜜，甜蜜，往这里……”</p><p>当蜜蜂跳着，有着一股杏仁的味道弥漫在四周，“甜蜜……甜蜜……”芙蓉花的声音低了下来。他缩紧了花瓣，望向了窗外低沉的明月，又对着蜜蜂说，“飞出去寻找蜂蜜吧。”</p><p>“飞吧，这样子我就能伴随最后一抹黄月看着你。”</p><p>“我真希望我可以当你的绅士。”蜜蜂飞起来靠近芙蓉花说道。</p><p>他飞了出去，伴着橱窗和明月发出的黄光。</p><p>……</p><p>可能是动画师为了维持绘本那样的对话格调吧，特意将大量经过调整的旁白放在了剧中：</p><p>“Minutes, hours,days,and years.”,Said the clock.</p><p>从而突出了类似于讲述者的语调。初听时感到古怪，但看完才发现，这种语调是这部动画营造迷人氛围的必不可少的手段。</p><p>《The Marzipan Pig》这部动画到处都洋溢着这样的氛围，古怪（对成年人来说）却又令人陶醉。虽有着儿童文学惯有万物有灵的泛灵论，但在充斥着说教的儿童文学领域，这部作品是那样的格格不入。对孤独、死亡等儿童文学不敢轻易触碰的话题作了讨论，不做说教，就仅仅是罗列出来，用一种事实就是如此的语调去讲述，就产生了如此的力量，不免让人啧啧称奇了。</p><p>本片用陈列出的孤独并不使人难受，甚至耐人寻味，接着又用着一种戏谑的态度讲述着孤独和爱情的关系（“你对我的爱有多少？”一只寻爱的猫头鹰对着出租车计价器说，“6便士”，计价器答道)。可能爱情在小孩子看来，爱情就是一种让人无厘头的事吧。</p><p>接着一期一会的故事，如果生命到明天就要结束，马上要变成像舞会过后皱巴巴的裙子躺在地上，那缩着身子看着月亮的心情又是怎样的呢？</p><p>这种思考，在一种考虑仁爱伦理之德教化的大部分儿童文学是少有的，也是难得的。如果我小时候能看到这部片子，我会因此而不同吗？不过，大概率还是过目就忘了吧（笑）。</p><p>在最后，老鼠在那对一切众生都平等对待的月光下，身穿芙蓉花制成的裙子在凌晨3点的大桥上跳起舞来，是如此的诗意，却有着一种异样的蛊惑力，似让人能忘却死亡和寂寞。</p><p>B站搬运的已经被河蟹了，现在要看到这片子，只能付上两美刀啦（笑）。</p><p> <a href="https://youtu.be/EqFmxJgUfnw">https://youtu.be/EqFmxJgUfnw</a></p>]]></content:encoded>
+      
+      
+      <category domain="https://blog.southfox.tk/categories/%E9%9A%8F%E7%AC%94/">随笔</category>
+      
+      
+      <category domain="https://blog.southfox.tk/tags/%E5%8A%A8%E7%94%BB/">动画</category>
+      
+      <category domain="https://blog.southfox.tk/tags/%E9%9A%8F%E7%AC%94/">随笔</category>
+      
+      
+      <comments>https://blog.southfox.tk/2020/01/Marzipan-Solitude/#disqus_thread</comments>
+      
+    </item>
+    
+    <item>
+      <title>漫展？漫展！</title>
+      <link>https://blog.southfox.tk/2020/01/%E6%BC%AB%E5%B1%95%EF%BC%9F%E6%BC%AB%E5%B1%95%EF%BC%81/</link>
+      <guid>https://blog.southfox.tk/2020/01/%E6%BC%AB%E5%B1%95%EF%BC%9F%E6%BC%AB%E5%B1%95%EF%BC%81/</guid>
+      <pubDate>Sat, 04 Jan 2020 16:09:35 GMT</pubDate>
+      
+      <description>&lt;p&gt;我原本以为漫展这么二刺螈的东西是以我无关的，虽然有时候我也挺好奇的，也有朋友一直在催，但是我还是因为一个根本原因而懒得出去——没钱。&lt;/p&gt;
+&lt;p&gt;而这次又是什么原因让我这个家里蹲舍得出去呢？&lt;/p&gt;</description>
+      
+      
+      
+      <content:encoded><![CDATA[<p>我原本以为漫展这么二刺螈的东西是以我无关的，虽然有时候我也挺好奇的，也有朋友一直在催，但是我还是因为一个根本原因而懒得出去——没钱。</p><p>而这次又是什么原因让我这个家里蹲舍得出去呢？</p><a id="more"></a><p>那是在2019最后一天的凌晨，我正在为白天课上的期末项目做准备，期间百无聊赖的我开始找朋友吹水，闲极问到元旦的行程，答曰，漫展。</p><p>之后我去搜索了一下漫展的相关情况，看着嘉宾名单，感叹道我果然不是二刺螈，几乎一个都不认识，就在我打算关掉网页时，一个熟悉的名字划过视线，浣熊无二。</p><p><img src="https://img.southfox.ga/2020/02/07/124zv9j.jpg" alt="">平常在无聊时，摸鱼网站是一扇对外的窗口，可以让我呼吸一点新鲜空气，通常我也会在上面随便翻看图片来寻找一点乐子，而在其中，一位叫作浣熊无二所作的作品的点赞数总是能排到前列，其所用素材大多都是天上飘得云所作，现在也算是出书了。没想到能在妖都看到他，我一开始感到有点惊奇，毕竟国内城市就那一个，而这个城市一般都不会是妖都。</p><p>我顿时犯了难，毕竟是真滴没钱，没钱还去展子，能凑得到什么热闹呢？经过几番挣扎，我还是买了票，然后睡了一觉之后，满脸仙气的起床，顿时有点后悔，难得的假期，应该猫在被窝里的，可是B站早已把我的后路断了——本票不接受退换，真有你的啊，阿B。</p><p>之后就经过一个多小时的地铁之旅，终于到达了漫展的地点，到达时已经是10点多了，朋友听到我签售是在12点时马上就催促我，我一开始还有点纳闷，不过当我正式进去时，我才发现他是对的，队伍七七八八挂的，进门兑票要排，进去也要排，在门前也要排，进去更要排队，让我除3号线地铁外能深刻感受到妖都身为一线城市的地位。</p><p>之后就终于进去了，兜兜转转的，终于在签售的最后一刻排到了</p><p><img src="https://img.southfox.ga/2020/02/07/1250gw3.jpg" alt="书本封面"></p><p><img src="https://img.southfox.ga/2020/02/07/1250msh.jpg" alt="签售成果">感觉颇有一点为以往摸鱼时光买单的感觉，之后就是在其他地方瞎逛了，还去了明日方舟的展子逛了一下，买了一个洁哥的亚克力牌，一个文件夹，还有一个盲盒礼包，开出了一个小美羊羊的的亚克力牌，以及一些阿米娅的链子，其中美羊羊的牌子，用来当手机支架蛮棒的（</p><p>然后就在展子上消磨时光到三四点，就回去了，总体算下来，那还真是对不上70块的票价的，果然，死宅的钱真好骗。</p><p>在晚上准备入睡的时候，翻看一下书籍，感觉大部分都看过了，可能作者也考虑了这一点，所以最后一部分画了将近50页的书本独占篇幅来完善世界观，而且前面第一部分加了画云技巧（这也是为什么本书上架建议为漫画和。。。绘画技巧栏目的关系吧）但不到180页的书，就卖了将近60块，又作为“网红漫画”，精细度也别强求，感觉也是不值这个售价（其实还是因为穷）</p><p>之后入睡前搜索了一下作者的信息，在百科上惊奇的发现，他竟然是《阿衰online》的主笔，猫小乐工作室的成员之一，怪不得，怪不得，看他的作品总有一种若有若无的既视感，这到算得上是一个意外之喜吧。</p>]]></content:encoded>
+      
+      
+      <category domain="https://blog.southfox.tk/categories/%E6%97%A5%E5%B8%B8/">日常</category>
+      
+      
+      <category domain="https://blog.southfox.tk/tags/%E6%97%A5%E5%B8%B8/">日常</category>
+      
+      
+      <comments>https://blog.southfox.tk/2020/01/%E6%BC%AB%E5%B1%95%EF%BC%9F%E6%BC%AB%E5%B1%95%EF%BC%81/#disqus_thread</comments>
+      
+    </item>
+    
+    <item>
+      <title>Hello World</title>
+      <link>https://blog.southfox.tk/2019/12/hello-world/</link>
+      <guid>https://blog.southfox.tk/2019/12/hello-world/</guid>
+      <pubDate>Wed, 18 Dec 2019 23:09:56 GMT</pubDate>
+      
+      <description>&lt;p&gt;Welcome to &lt;a href=&quot;https://hexo.io/&quot;&gt;Hexo&lt;/a&gt;! This is your very first post. Check &lt;a href=&quot;https://hexo.io/docs/&quot;&gt;documentation&lt;/a&gt; for more info. If you get any problems when using Hexo, you can find the answer in &lt;a href=&quot;https://hexo.io/docs/troubleshooting.html&quot;&gt;troubleshooting&lt;/a&gt; or you can ask me on &lt;a href=&quot;https://github.com/hexojs/hexo/issues&quot;&gt;GitHub&lt;/a&gt;.&lt;/p&gt;</description>
+      
+      
+      
+      <content:encoded><![CDATA[<p>Welcome to <a href="https://hexo.io/">Hexo</a>! This is your very first post. Check <a href="https://hexo.io/docs/">documentation</a> for more info. If you get any problems when using Hexo, you can find the answer in <a href="https://hexo.io/docs/troubleshooting.html">troubleshooting</a> or you can ask me on <a href="https://github.com/hexojs/hexo/issues">GitHub</a>.</p><a id="more"></a><p>恩嗯嗯，好好好，我知道了。</p><p>总之，就是把以前建立在WordPress的东西搬到这里来而已。</p><p>用上Hexo的原因是因为比较简（zhuang）洁（bi），好吧，其实还是因为原来的WordPress太繁了（不是错字），虽然功能强大，但代价就是非常臃肿。如果是这一点，还是可以忍受的，但因为，原来那一台是阿里云的国内机，因为某些<strong>不可抗力</strong>，与WordPress服务是无法直连的，还得我上梯子手动下安装包自己更新，我已经懒得这么做了，而一但WordPress不更新，那就是个鱼网，漏洞百出。</p><p>索性就搬到这里来吧，换上Hexo，变成静态博客，虽然不能提供什么高级功能，但是也反向的保证了核心需求，搬迁的时候，抛开太过乱七八糟的东西和随手乱留的文字，好像也没有什么文章能拿过来，希望以后能多写点东西出来吧。</p>]]></content:encoded>
+      
+      
+      
+      
+      <comments>https://blog.southfox.tk/2019/12/hello-world/#disqus_thread</comments>
+      
+    </item>
+    
+    <item>
+      <title>抛开国产单机、迷文化地加成，《型骸骑士》究竟如何？</title>
+      <link>https://blog.southfox.tk/2019/12/%E6%8A%9B%E5%BC%80%E5%9B%BD%E4%BA%A7%E5%8D%95%E6%9C%BA%E3%80%81%E8%BF%B7%E6%96%87%E5%8C%96%E5%9C%B0%E5%8A%A0%E6%88%90%EF%BC%8C%E3%80%8A%E5%9E%8B%E9%AA%B8%E9%AA%91%E5%A3%AB%E3%80%8B%E7%A9%B6%E7%AB%9F%E5%A6%82%E4%BD%95%EF%BC%9F/</link>
+      <guid>https://blog.southfox.tk/2019/12/%E6%8A%9B%E5%BC%80%E5%9B%BD%E4%BA%A7%E5%8D%95%E6%9C%BA%E3%80%81%E8%BF%B7%E6%96%87%E5%8C%96%E5%9C%B0%E5%8A%A0%E6%88%90%EF%BC%8C%E3%80%8A%E5%9E%8B%E9%AA%B8%E9%AA%91%E5%A3%AB%E3%80%8B%E7%A9%B6%E7%AB%9F%E5%A6%82%E4%BD%95%EF%BC%9F/</guid>
+      <pubDate>Fri, 13 Dec 2019 11:10:32 GMT</pubDate>
+      
+      <description>&lt;p&gt;&lt;img src=&quot;https://i.loli.net/2019/12/13/mt8iTN9sdBaODY7.jpg&quot; alt=&quot;&quot;&gt;&lt;/p&gt;</description>
+      
+      
+      
+      <content:encoded><![CDATA[<p><img src="https://i.loli.net/2019/12/13/mt8iTN9sdBaODY7.jpg" alt=""></p><a id="more"></a><h1 id="画面"><a href="#画面" class="headerlink" title="画面"></a>画面</h1><p>画面并不算特别精致的那种，但总体游玩下来也非常地养眼。<br>除了某些素材和道具动画，感觉像是拿系统工具画图画的 <s><del>没错就是那个幽灵宝宝的子弹，我真觉得像从PPT整出来的，还有那啥冲击波动画，那停止的感觉也太奇怪了吧（</del></s>，在这样精度不匹配的情况下给人一种怪怪的感觉。</p><h1 id="音乐"><a href="#音乐" class="headerlink" title="音乐"></a>音乐</h1><p>整体游玩过程中，我对音乐基本没什么感觉 <s>也许是因为我是个木耳</s>，而对于一个Rogue游戏来说，没有感觉就是最棒的，因为玩家一般都处于”无脑”状态，没有感觉就说明音乐契合游戏基调。<br>除了对话过程中的音乐切换，已经不能算是突兀了，已经可以算的上是吓人一跳的程度了，建议理一理。</p><h1 id="操作"><a href="#操作" class="headerlink" title="操作"></a>操作</h1><p>本作的操作比较亲民，例如起跳判定非常宽松，甚至都已经离开平台边了都能虚空起跳，非常之好，就是人物动作稍显梆硬了一点儿，希望后续更新能给人物动作加上更多缓冲帧吧。</p><h1 id="设计"><a href="#设计" class="headerlink" title="设计"></a>设计</h1><p>道具设计同时也非常亲民，不管是能连开两次的主动，还是其他的续航道具，做到了只要肯慢慢刷图，即使是手残到了BOSS战也能用道具莽死BOSS的程度，但在另一端，对于想要速刷的玩家的体验就没有那么好了，没有类似死亡细胞的限时门机制，导致想GKD点的玩家非常致命，比如我异化符文开局，8分钟冲到亡灵夫人门前，然后就萎倒在了人家裙下（<br>至于地图，每次开局，感觉就是把上一次的地图整体顺逆时针旋转了一下下而已，即视感非常强烈，不过EA阶段，房间池浅也能理解，期待后续更新能加入更多有趣的地图设计吧。<br>而在其他的小细节上，不管是教程达成不吃药威尔“剑动四方”的评价，还是在老师遗体上蹦迪这意义不明的成就，我都充分感觉到制作组的用心。<s>希望再整多一点！</s></p><h1 id="总评"><a href="#总评" class="headerlink" title="总评"></a>总评</h1><p>综上所述，在抛开各种国单，迷文化，粉丝加成下，现阶段我个人给出<u><strong>8.2</strong></u>分的评价 <s>但只要你给我谜酥看，我就给满分！！！</s> ，虽然突出亮点不多，但胜在非常扎实，值得一个Good评价，期待在后续的打磨下，能变成一个Amazing的游戏吧。</p><hr />最后，再说一下我个人对游戏非常担忧的一点，就是，<strong>游戏在不时地打断以Rogue为主体的体验</strong>。<p>私以为，Rogue的的乐趣在于通关过程上，用熟练的操作打过boos，在商店见到一个IMBA或是能和身上道具组合打出完美combo的道具地狂喜，都是Rogue游戏的爽点，而在这过程中，玩家一般都凭直觉行事，不管是夏季尔乱滚还是做出道具选择上，都处于一种“右脑”状态下，所以这也是为什么Rogue游戏大都选择了黑暗之魂式叙事手法，即，把剧情和相关设定掰碎分散在一个个道具说明或是一些小的剧情碎片中，由玩家来在游戏后自行拼凑出整体故事（以撒就是这方面的经典例子），这样做的目的，就是为了剧情阅读（左脑状态）<strong>不打断</strong>玩家游玩主体部分的体验（右脑状态）。</p><p>而本作似乎想把剧情当成一个重点？不管是大量穿插游戏的对白，还是地图上设计的“善良的怪物”都在整体拉高剧情的存在感，但不可避免的，<strong>和Rogue玩法产生冲突</strong>，就比如“善良的怪物”初看时会看上两眼，下一个不同对话，也会看上两眼，而下一次发现是相同对话，就开始疯狂不停地按键跳过了，这样子到最后就开始养成习惯了，冲到面前，按上，然后按按按按按，东西给的是什么也没看清就冲到下一个房间了，习惯养成后，即使到了新的地图，知道是一个新的剧情对话，也会不由自主的想按按按键跳过了。</p><p>放一个到后面都会按键跳过的对话，那还不如整一个，“啊，我心情不好，你帮我把下一个房间的怪搞定，我给你一瓶药”的任务来的更好。</p><p>而Rogue死亡人生重来又随机道具的特性，注定了重开是一件家常便饭的事，而且，<strong>下一盘总比这盘好</strong>，有时候，因为失误次数过多，或者没拿到好一点的道具，就会陷入自暴自弃的状态，”啊，要是我打不过下一个boss或者下一个宝箱不是个好道具，那我快速死掉重开得了“（以撒这方面已经做到了丧心病狂的程度了，长按个R键直接重来）。总而言之，就是利用玩家对随机的痴恋，让两次游玩的影响降到最小，啊我死了，没关系，我下一次一定能打败那BOSS！/一定能拿好道具！下一盘，我来了！！！。。。然后威尔就跳出来和你吹水了，诶，没办法，听吧。类似这样的的剧情对白真的满割裂整体体验的。</p><p>我的建议是，以其把剧情当成必经之路强制要玩家看，不如做成非强制或是奖励的形式（比如整个时光回廊啥的，加上各种丧病条件，让玩家一次次去冲击，最后再解锁某个人物的关键剧情之类的？），当然了，我相信制作组想在Rogue的叙事上做出突破的心思，现在的样子是做出取舍的结果？也许有后招憋着？但现在的样子，我是觉得不妥。</p><hr />最最后是一些我觉得需要改的小细节 <s>鸡蛋里挑骨头</s><ol><li>进去教程第一句话，按空格回车是没有用的，明明刚才进来是用回车，咋回事啊？然后键盘摸了个遍最后才发现按J才可以继续对话。 <s>大热天，浑冰凉，泪忍流，我们键鼠玩家什么时候才能真正站起来！</s></li><li>剧情文本逻辑有问题，第一次进图，看见威尔，主角自己吐槽这是平行世界的威尔吧。我当时就有点小疑惑，你咋知道这是平行世界啊，最后死回去才触发平行世界这条剧情对话。。。</li><li>平砍连打，起跳和冲刺可以打断攻击攻击动作。但为什么下平台不行？！经常出现我想下平台还要看完主角呆砍一会后，才下平台。</li><li>对话时候竟然不是无敌的？！我当时在实验室跟人对话呢，那个穿墙独眼怪就冲了过来，直接摸了我三格血。</li><li>樱闪配上兽人魂石（增加移动速度并改变跑步姿势那个）会让后续动作变得非常喜感。</li><li>JKUI的默认键位是真滴反人类，把必杀放到随手能按到的地方（shift，空格），要比起要移动右手指去按I反应速度快了不止一截。<s>大热天，浑冰凉，泪忍流，我们键鼠玩家什么时候才能真正站起来！</s></li><li>打开地图游戏会暂停，对于快节奏的Rogue游戏来说有点不适，而且最主要是不能通过地图选择传送门，经常出现为了去传送门而跑一大段图的事情。</li></ol>]]></content:encoded>
+      
+      
+      <category domain="https://blog.southfox.tk/categories/%E6%B8%B8%E6%88%8F/">游戏</category>
+      
+      
+      <category domain="https://blog.southfox.tk/tags/%E6%B8%B8%E6%88%8F/">游戏</category>
+      
+      <category domain="https://blog.southfox.tk/tags/%E8%AF%84%E6%B5%8B/">评测</category>
+      
+      <category domain="https://blog.southfox.tk/tags/Kelipot/">Kelipot</category>
+      
+      
+      <comments>https://blog.southfox.tk/2019/12/%E6%8A%9B%E5%BC%80%E5%9B%BD%E4%BA%A7%E5%8D%95%E6%9C%BA%E3%80%81%E8%BF%B7%E6%96%87%E5%8C%96%E5%9C%B0%E5%8A%A0%E6%88%90%EF%BC%8C%E3%80%8A%E5%9E%8B%E9%AA%B8%E9%AA%91%E5%A3%AB%E3%80%8B%E7%A9%B6%E7%AB%9F%E5%A6%82%E4%BD%95%EF%BC%9F/#disqus_thread</comments>
+      
+    </item>
+    
+    <item>
+      <title>他们来啦</title>
+      <link>https://blog.southfox.tk/2019/10/%E4%BB%96%E4%BB%AC%E6%9D%A5%E5%95%A6/</link>
+      <guid>https://blog.southfox.tk/2019/10/%E4%BB%96%E4%BB%AC%E6%9D%A5%E5%95%A6/</guid>
+      <pubDate>Wed, 02 Oct 2019 11:08:04 GMT</pubDate>
+      
+      <description>&lt;p&gt;开头，又是丧尸横行的世界，我也是一如既往的被尸潮追着，但是这一次不一样，大概是因为我已经习惯了吧，这一次的焦躁感没有以前那么强烈了，感觉像是在跑田径一样。跑啊跑啊，就有一个丧尸追在我身后，然后我娴熟地（？）掏出&lt;strong&gt;一件东西&lt;/strong&gt;反手一甩，就将丧尸击退了。&lt;/p&gt;
+&lt;p&gt;心中想着，&lt;strong&gt;只要保持前15%就好了&lt;/strong&gt;，然后匀速的往前跑。突然身后传来惨叫声——回头瞟一眼，看起来是有人被追上了，心里却想着，鲜血和惨叫是绝佳的目标，后面的丧尸即使抢不到一块肉也会扑过去，好级了。之后的事，就是我加快脚步往前冲了。。。&lt;/p&gt;</description>
+      
+      
+      
+      <content:encoded><![CDATA[<p>开头，又是丧尸横行的世界，我也是一如既往的被尸潮追着，但是这一次不一样，大概是因为我已经习惯了吧，这一次的焦躁感没有以前那么强烈了，感觉像是在跑田径一样。跑啊跑啊，就有一个丧尸追在我身后，然后我娴熟地（？）掏出<strong>一件东西</strong>反手一甩，就将丧尸击退了。</p><p>心中想着，<strong>只要保持前15%就好了</strong>，然后匀速的往前跑。突然身后传来惨叫声——回头瞟一眼，看起来是有人被追上了，心里却想着，鲜血和惨叫是绝佳的目标，后面的丧尸即使抢不到一块肉也会扑过去，好级了。之后的事，就是我加快脚步往前冲了。。。</p><a id="more"></a><p>接下来的场景似乎是在我家里里，我呆在房间里，突然后门传来敲门声，我赶过去，似乎是我妈在外面，但是当我的手碰到门把手的时候，我迟疑了，毕竟在一个丧尸横行的世界，开门小心点总没错，随后我小心的推门到半张，发现的是地上的一滩血迹，门后站着的身影眼珠也泛着惨白——果然！我碰的一声关上门，随即狂奔到阳台，发现的不人是我以为的人——是我的高中物理老师。</p><p>“你被咬了？”我对着老师，惊疑不定的问到。</p><p>诶呀，这也是没办法的事啊，老师开始用她那种<strong>惯有</strong>的语气说到。</p><p>。。。</p><p>不，不行，我不同意，这种事怎么可能发生呢？心中的念想逐渐激烈，随后达到了可以影响梦中事物的程度——场景一闪，<strong>时间开始倒流</strong>到我了站在门前的那一刻。。。还没当我的手碰到门把手，我就醒了，娴熟的翻过身，拿起手机，7点，好，还能再睡两个小时，睡之前不忘吐槽一句——怎么又是丧尸梦。</p><p>&nbsp;</p><p>接下来，我似乎身披一件黄色雨衣站在一块空地上，旁边也是形形色色披着各色雨衣的人影，之后我呼吸一滞——这些雨衣下的，不是人，<strong>是丧尸</strong>！我开始有些慌乱了起来，同时注意到了远处有一道墙，墙里面看起来是人类的聚集地，高墙上有着不少人影向这里观望。</p><p>好吧好吧，屏住呼吸，现在不能让他们发现我，看起来这些丧尸聚集在这里，，，<strong>似乎是在开会</strong>？之后我迷迷糊糊的熬到他们都解散了，然后混水摸鱼的摸到墙边，将衣服往里一抛，之后连忙地翻进墙去。。。</p><p>&nbsp;</p><p>&nbsp;</p><p>解析：</p><p>（怎么说，看起来因为丧尸这一元素出现的太多次了，我已经不太当一回事了，然后潜意识就改变了表现形式，以来激起我的注意！？）</p><p>第一个场景中的反手掏出的东西，第一感觉是枪，但我感觉又不是枪（？）这里我感觉是一个要着力的点，但不是枪，又会是什么呢？（<del datetime="2019-10-12T03:03:18+00:00">不可能是口口剑吧</del>）一般而言，丧尸对我来说代表焦虑，而对抗焦虑我一般会去喝肥宅快乐水，当天入睡前我也确实喝了一瓶，，，难道我反手一甩的是快乐水？emmmm，maybe？</p><p>之后的保持在前15%就好了，让我想起那个旅行人与熊的故事——</p><p>两人旅行，一人绑紧鞋带，另一人嗤笑到，怎么，你还想跑过熊？</p><p>他答到，我不求跑过熊，我只求<strong>跑过你</strong>。</p><p>结合之后的尸潮，看起来解释为关于竞争压力大半是对的，而且至少这次我没拉人当肉盾，看起来素质有了提高（？）</p><p>&nbsp;</p><p>下一个场景，令人在意的点是我妈和高中物理老师，可以肯定梦系统将两人压合到了一起，这代表潜意识要我注意两人的相同（或不同）点，可是关于这里，我还没有什么想法。</p><p>&nbsp;</p><p>再下一个场景，令我惊讶的事就是丧尸在开会？这代表丧尸产生了智慧，而如果只是单纯的焦虑，是没必要产生智能的，所以，要么就是丧尸在我梦中代表的意像发生了改变，要么就是我现如今焦虑的对象发生了改变，关于这一点，我暂且蒙在鼓里。</p>]]></content:encoded>
+      
+      
+      <category domain="https://blog.southfox.tk/categories/%E6%A2%A6%E8%AE%B0/">梦记</category>
+      
+      
+      <category domain="https://blog.southfox.tk/tags/%E6%A2%A6%E8%AE%B0/">梦记</category>
+      
+      
+      <comments>https://blog.southfox.tk/2019/10/%E4%BB%96%E4%BB%AC%E6%9D%A5%E5%95%A6/#disqus_thread</comments>
+      
+    </item>
+    
+    <item>
+      <title>年度后悔网站</title>
+      <link>https://blog.southfox.tk/2019/08/%E5%B9%B4%E5%BA%A6%E5%90%8E%E6%82%94%E7%BD%91%E7%AB%99/</link>
+      <guid>https://blog.southfox.tk/2019/08/%E5%B9%B4%E5%BA%A6%E5%90%8E%E6%82%94%E7%BD%91%E7%AB%99/</guid>
+      <pubDate>Thu, 15 Aug 2019 11:05:09 GMT</pubDate>
+      
+      <description>&lt;p&gt;梦见一开始好像是在浏览器的设置页面，随意的翻看下，看到了一个。。。什么什么的年度报告。&lt;/p&gt;</description>
+      
+      
+      
+      <content:encoded><![CDATA[<p>梦见一开始好像是在浏览器的设置页面，随意的翻看下，看到了一个。。。什么什么的年度报告。</p><a id="more"></a><p>点进去之后，注意到它的网址是houhui.xxx(后悔?)，然后就开始往下翻。</p><p>往下翻到的第一个专栏页面中间是一个罐装可乐，左边辐射状的散出可口可乐的颜色(红色)，右边则辐射出百事可乐的颜色(蓝色)，底下有一串字——…可乐…调剂</p><p>再往下翻则是一个图片，左上方是一个张着的嘴，看起来像是要吃掉下面的东西的样子，而下方是一团糊糊的马赛克，依稀看起来像是企鹅。</p><p>往周边留意，旁边文字写着，有那么多古老物种肉我们没有吃过，为了不浪费，我们应该去有效利用这些肉…</p><p>––––––––––––</p><p>解析:</p><p>首先是网址houhui.xxx，很明确的说明这个梦的基调——后悔，但具体指什么，又是谁让谁后悔，要具体分析一下。</p><p>第一个场景的可乐，让我想起了在QQ空间里一个朋友分享的动态，大概是三个人一起出去玩，然后玩猜可乐的游戏——蒙着眼睛喝下可乐去猜是什么牌子的可乐，最后一次测试他们就很不厚道的把两种品牌的可乐混在了一起。。。</p><p>所以这可乐是把朋友做的游戏和混合可乐结合印象，也许是映射了我人际关系的问题(某些地方的后悔之处?)调剂这个词也意味着我应该要处力好人际关系?但这个片段太模糊不清，还是很难分析出啥。</p><p>下一个是张着的嘴这个景象，想到吃和旁边的“我们应该多吃点不同物种的肉”也对应起来，这让我想到了川普政府重创濒危动物保护法的新闻(大幅缩减该法案的经费，理由在于这一理念拖了商业的后腿)</p><p>而这又让我想到了特朗普，可是从特朗普上我又实在是联想不出来什么，最近身边也没有类似特朗普的人或物，，，</p><p>而上面这两个场景和后悔的联系是:特朗普！你们这么做，一定会伤害到地球，伤害到环境，伤害到人类的！！！……嘛?我不觉得我的潜意识会这么高尚，但是我实在分析出来其他什么东西了。。。</p><p>最后是关于马赛克企鹅的场景，虽然梦中联想到吃，但是有时候应该把思维逆转一下，就会发现！——</p><p>张着嘴:除了吃下去还可以是吐出来</p><p>马赛克:是阻力的象征，也可以代表秘密</p><p>企鹅:一个神秘的软件形象代表</p><p>所以，综合起来，就是通过企鹅来吐露出秘密，这，和我最近为鱼鱼咸计划的功能非常有联系。。。</p><p>&nbsp;</p><p>190821按:</p><p>破案了，突然想到了我工作中的上司，把我辞职单的日期往后提了一个星期(计划于21号走，却被改到28号)，让我的痛苦延长了一个星期，这个改动我辞职书的场景被梦系统和川普政府的行为整合到了一起。</p><p>所以，这段可以理解，叫你不以力据争，最后被修改了文件(保护法——辞职书)，现在落到这样了地步了吧(被迫吃奇奇怪怪的肉——被迫多工作一星期)，啊哈哈，该！后悔去吧！</p><p>这，就是一个悲伤的故事了。。。</p>]]></content:encoded>
+      
+      
+      <category domain="https://blog.southfox.tk/categories/%E6%A2%A6%E8%AE%B0/">梦记</category>
+      
+      
+      <category domain="https://blog.southfox.tk/tags/%E6%A2%A6%E8%AE%B0/">梦记</category>
+      
+      
+      <comments>https://blog.southfox.tk/2019/08/%E5%B9%B4%E5%BA%A6%E5%90%8E%E6%82%94%E7%BD%91%E7%AB%99/#disqus_thread</comments>
+      
+    </item>
+    
+    <item>
+      <title>二战？！</title>
+      <link>https://blog.southfox.tk/2018/11/%E4%BA%8C%E6%88%98%EF%BC%9F%EF%BC%81/</link>
+      <guid>https://blog.southfox.tk/2018/11/%E4%BA%8C%E6%88%98%EF%BC%9F%EF%BC%81/</guid>
+      <pubDate>Sat, 10 Nov 2018 10:59:02 GMT</pubDate>
+      
+      <description>&lt;p&gt;早上9点才摸起来，然后打手游又摸到了12点，然后跑出去吃饭&amp;mdash;&amp;mdash;回来时又摸机到3点&amp;mdash;&amp;mdash;总之，摸爆了，所以爆了之后，就比较累，所以在下午三点种睡下.。。。&lt;/p&gt;
+&lt;p&gt;总之，做了个非常长的梦&amp;mdash;&amp;mdash;或者，剧情挺丰富的梦，但是想起来虽然挺鲜活，变成文字就有点苍白了，果然梦记这种东西得天天练习一下才行鸭&amp;mdash;&amp;mdash;&lt;/p&gt;</description>
+      
+      
+      
+      <content:encoded><![CDATA[<p>早上9点才摸起来，然后打手游又摸到了12点，然后跑出去吃饭&mdash;&mdash;回来时又摸机到3点&mdash;&mdash;总之，摸爆了，所以爆了之后，就比较累，所以在下午三点种睡下.。。。</p><p>总之，做了个非常长的梦&mdash;&mdash;或者，剧情挺丰富的梦，但是想起来虽然挺鲜活，变成文字就有点苍白了，果然梦记这种东西得天天练习一下才行鸭&mdash;&mdash;</p><a id="more"></a><p>接下来是比较能串在一起的场景&mdash;&mdash;</p><p>一开始，我在一个庭院里&mdash;&mdash;不知道跟着谁，可能是家人，朋友，又有可能是独自一人，这个庭院是一个很标准的西式家庭房子的院子&mdash;&mdash;里面的家庭也挺标准的，一个男人，一个女人，还有几些孩子，他们梦中都提到了名字，可惜都比较模糊&mdash;&mdash;所以我都给忘了（惭愧惭愧），然后我们似乎处的很好，度过了一段愉快的时光&mdash;&mdash;</p><p> 然后场景几经变化&mdash;&mdash;中间似乎我醒来过，听到我们班班长进来找人的声音&mdash;&mdash;&nbsp; 之后，我重新睡了下去，然后发现，我还处在那个院子里，我旁边的人似乎已经走了，似乎就只有我在哪里，然后我发现，女主人在捂着脸在哭？我问她为什么在哭，然后她挥挥手指了周围，我抬起头环视周围，发现周围竟是一样的院子，院子周围的院子，还是一样的院子，然后一样的院子里，都是同样的女子在捂脸哭泣，这算什么？终究发现了自己的位置？像是一个NPC，就这样被安排在那里？我不知道。。。</p><p>接下来，我迷迷糊糊走了出去，走到了一个街道一样的地方，然后跟一名男子搭上了话，用的还是英语，我还在脑海里拼命的组词，哇，这么个逻辑活都没能让我知梦，将这个梦变成清明梦，果然睡前的暗示是有必要的（或者说我最近睡眠紊乱，dream power尽失）。</p><p>&ldquo;该死的，要不是最近几年的二战&mdash;&mdash;&rdquo;</p><p>what？！最近几年？可是我感觉到现在依然是8012年啊，然后我抬头，发现街角的一个房子上的标语上写着&ldquo;World War ⅱ&mdash;&mdash;&rdquo;</p><p> &ldquo;额，但是&mdash;&mdash;&rdquo;我语无伦次的说到&ldquo;我们那里，二战是1945年开。。。不，1945年就结束了啊，这里这么就&mdash;&mdash;&rdquo;然后梦就崩掉了，我醒过来了。</p><p>大概，我是梦穿到了一个其他的世界线？现在想来，梦里的2018年面没有出现什么高科技产品，大概，是因为事情走向的差异吧，相比于我们，科技发展和事情延迟了70几年吧&mdash;&mdash;</p><p>然后是一些零碎的场景</p><p>第一个是我在家里打开第二台笔记本电脑（但是也只是梦里的感觉，毕竟家里面没有第二台本本），发现系统已经被刷掉了，没有图形界面，打开竟是一些命令字符&mdash;&mdash;我感到几丝。。。惊诧和落寂？</p><p>然后 是一个礼堂什么的，吃了一些什么菜，然后是一个巴士开走了，不知道是什么人在追赶，大概&mdash;&mdash;以前也梦到过这个场景？</p><p>接下来是我梦到在一个楼梯隔间计划着什么事，不过回想不到什么，里面的阻力异常的大，大概是潜意识&ldquo;刻意&rdquo;为止压抑的，毕竟这个场景我有着比较大的情绪起伏的。</p>]]></content:encoded>
+      
+      
+      <category domain="https://blog.southfox.tk/categories/%E6%A2%A6%E8%AE%B0/">梦记</category>
+      
+      
+      <category domain="https://blog.southfox.tk/tags/%E6%A2%A6%E8%AE%B0/">梦记</category>
+      
+      
+      <comments>https://blog.southfox.tk/2018/11/%E4%BA%8C%E6%88%98%EF%BC%9F%EF%BC%81/#disqus_thread</comments>
+      
+    </item>
+    
+  </channel>
+</rss>
